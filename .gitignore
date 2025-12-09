@@ -1,0 +1,16 @@
+# 日志文件
+logs/
+
+
+# 配置文件
+config.yaml
+
+# NapCat 相关
+napcat/
+
+# Python
+__pycache__/
+.env
+
+# 数据文件
+data/
