@@ -1,0 +1,5 @@
+requests
+python-dotenv
+websockets
+openai
+zoneinfo; python_version>='3.9'
