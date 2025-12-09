@@ -101,13 +101,11 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
         output = f"""
 🌍 {state} · {city_name.upper()}
 
-━━━━━━━━━━━━━━━━
 {get_weather_emoji(condition)} 当前天气: {condition}
 {get_temp_emoji(temp)} 温度: {temp}°C (体感 {feels_like}°C)
 {get_wind_emoji(wind_speed)} 风况: {wind_dir} {wind_speed}
 💧 湿度: {humidity}%
 🌬️ 空气质量: AQI {aqi} {get_aqi_emoji(aqi)}
-━━━━━━━━━━━━━━━━
 
 📅 未来天气预报:
 """
