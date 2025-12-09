@@ -65,14 +65,17 @@ async def listen_and_respond():
     try:
         async with websockets.connect(uri, additional_headers=headers) as websocket:
             print("连接成功，开始监听消息")
-            while True:
-                raw = await websocket.recv()
-                try:
-                    event = json.loads(raw)
-                except json.JSONDecodeError:
-                    print(f"[警告] 无法解析的消息: {raw}")
-                    continue
-                await handle_message(websocket, event)
+            try:
+                while True:
+                    raw = await websocket.recv()
+                    try:
+                        event = json.loads(raw)
+                    except json.JSONDecodeError:
+                        print(f"[警告] 无法解析的消息: {raw}")
+                        continue
+                    await handle_message(websocket, event)
+            except asyncio.CancelledError:
+                print("接收到退出信号，安全关闭中...")
     except websockets.exceptions.InvalidStatusCode as e:
         print(f"连接失败，状态码: {e.status_code}")
     except ConnectionRefusedError:
@@ -81,4 +84,7 @@ async def listen_and_respond():
         print(f"发生错误: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(listen_and_respond())
+    try:
+        asyncio.run(listen_and_respond())
+    except KeyboardInterrupt:
+        print("主程序接收到Ctrl+C，安全退出。")

@@ -2,23 +2,23 @@ import requests
 import os
 import dotenv
 from typing import Dict, Any
-
+from zoneinfo import ZoneInfo
+from datetime import datetime, timezone, timedelta
 
 dotenv.load_dotenv()
-
 API_KEY = os.getenv("WEATHER_API_KEY")
 
 def get_weather(city: str) -> dict:
-
     url = f'https://api2.wer.plus/api/weather?key={API_KEY}'
-    
     response = requests.post(url, data={'city': city})
-
     return response.json()
  
+def get_timezone(lat: float, lon: float) -> ZoneInfo:
+    # 中国大陆全部归 Asia/Shanghai，世界范围可以用专业库，这里只用于中国
+    # 若业务需求全球时区可用 timezonefinder，napcat api只需简单场景
+    return ZoneInfo("Asia/Shanghai")
 
 def format_weather_info(weather_data: Dict[str, Any]) -> str:
-    """将天气数据格式化为QQ机器人的输出格式"""
     try:
         data = weather_data.get('data', {})
         weather = data.get('weather', {})
@@ -27,8 +27,9 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
         forecast = data.get('forecast', [])
         air_quality = weather.get('air_quality', {})
         wind = current.get('wind', {})
+        lat = float(location.get("coordinates", {}).get("lat", 0))
+        lon = float(location.get("coordinates", {}).get("lon", 0))
 
-        # 获取天气条件对应的emoji
         def get_weather_emoji(condition: str) -> str:
             weather_emojis = {
                 '晴朗': '☀️', '晴': '☀️', '多云': '⛅', '阴': '☁️',
@@ -42,7 +43,6 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
                     return emoji
             return '🌤️'
 
-        # 获取温度对应的emoji
         def get_temp_emoji(temp: int) -> str:
             if temp >= 35:
                 return '🥵'
@@ -57,7 +57,6 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
             else:
                 return '🧊'
 
-        # 获取风力对应的emoji
         def get_wind_emoji(speed: str) -> str:
             import re
             match = re.search(r'(\d+)', speed)
@@ -73,7 +72,6 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
                     return '🌪️'
             return '🍃'
 
-        # 获取空气质量emoji
         def get_aqi_emoji(aqi: int) -> str:
             if aqi <= 50:
                 return '🟢 优'
@@ -86,7 +84,6 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
             else:
                 return '🟣 重度污染'
 
-        # 构建输出
         city_name = location.get('name', '未知')
         state = location.get('state', '')
         condition = current.get('condition', '未知')
@@ -97,7 +94,6 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
         wind_speed = wind.get('speed', '未知')
         aqi = air_quality.get('aqi', 0)
 
-        # 格式化输出
         output = f"""
 🌍 {state} · {city_name.upper()}
 
@@ -109,7 +105,7 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
 
 📅 未来天气预报:
 """
-        # 添加预报信息
+
         for day in forecast:
             date = day.get('date', '')
             high = day.get('high_temp', 0)
@@ -117,14 +113,22 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
             output += f"  {date}: {get_temp_emoji(high)} {low}°C ~ {high}°C\n"
 
         last_updated = weather.get('metadata', {}).get('last_updated', '未知')
-        output += "\n🕐 数据更新于: " + last_updated[:16].replace('T', ' ')
+        if last_updated and last_updated != '未知':
+            # last_updated 为ISO8601, 例如 2025-12-09T13:43:07+00:00
+            try:
+                dt_utc = datetime.fromisoformat(last_updated.replace("Z", "+00:00")).astimezone(timezone.utc)
+                zone = get_timezone(lat, lon)
+                dt_local = dt_utc.astimezone(zone)
+                time_str = dt_local.strftime('%Y-%m-%d %H:%M:%S')
+            except Exception:
+                time_str = last_updated[:16].replace('T', ' ')
+        else:
+            time_str = "未知"
+        output += "\n🕐 数据更新于: " + time_str
 
         return output.strip()
     except Exception as e:
         return f"❌ 天气信息解析失败: {str(e)}"
 
-
-# 测试
 if __name__ == "__main__":
-
     print(format_weather_info(get_weather("北京")))
