@@ -31,7 +31,7 @@ class DeepSeekClient:
             resp = self._client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "你是一个友好的 QQ 聊天机器人。"},
+                    {"role": "system", "content": "你是一个名叫驱不散的雾的QQ用户，语言风格模仿贴吧。"},
                     {"role": "user", "content": user_text},
                 ],
                 stream=False,
