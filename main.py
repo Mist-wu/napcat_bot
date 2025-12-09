@@ -7,7 +7,7 @@ from src.ai.ai_module import DeepSeekClient
 from src.utils import handler, out
 
 target_qq = config.root_user
-NAPCAT_HOST = "178.128.61.90"
+NAPCAT_HOST = config.napcat_host
 NAPCAT_PORT = 3001
 NAPCAT_TOKEN = config.napcat_token
 
@@ -35,7 +35,8 @@ def extract_text_from_message(message: Any) -> str:
 async def handle_message(websocket, event: Dict[str, Any]) -> None:
     if event.get("post_type") != "message":
         return
-    if event.get("message_type") != "private":
+    msg_type = event.get("message_type")
+    if msg_type not in ["private", "group"]:
         return
     user_id = str(event.get("user_id", ""))
     if user_id != str(target_qq):
@@ -48,8 +49,14 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
     if not text:
         return
     reply = await handler.process_private_text(text, ai_client)
-    if reply:
+    if not reply:
+        return
+    if msg_type == "private":
         await out.send_private_text(websocket, target_qq, reply)
+    elif msg_type == "group":
+        group_id = event.get("group_id")
+        if group_id:
+            await out.send_group_text(websocket, group_id, reply)
 
 async def listen_and_respond():
     uri = f"ws://{NAPCAT_HOST}:{NAPCAT_PORT}/ws"
