@@ -2,29 +2,18 @@ import asyncio
 import json
 from typing import Any, Dict, List
 import config.config as config
-
 import websockets
-
 from src.ai.ai_module import DeepSeekClient as DeepSeekClient  # 引入分离的 AI 模块
 
 # --- 配置信息 ---
 target_qq = config.root_user  # 仅响应此 QQ 的私聊消息
-NAPCAT_HOST = "localhost"
+NAPCAT_HOST = "178.128.61.90"
 NAPCAT_PORT = 3001
-NAPCAT_TOKEN = ""  # 您的 NapCat 访问令牌
+NAPCAT_TOKEN = "L]VM}7Ou@Tzu2S#7"  # 您的 NapCat 访问令牌
 
-# DeepSeek / OpenAI SDK 设置
-DEEPSEEK_API_KEY = config.deepseek_api_key
-DEEPSEEK_API_BASE = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-chat"
-# -----------------
 
 # 初始化 AI 客户端
-ai_client = DeepSeekClient(
-    api_key=DEEPSEEK_API_KEY,
-    api_base=DEEPSEEK_API_BASE,
-    model=DEEPSEEK_MODEL,
-)
+ai_client = DeepSeekClient()
 
 
 def extract_text_from_message(message: Any) -> str:

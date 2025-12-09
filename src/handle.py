@@ -1,4 +1,7 @@
-def is_command_message() -> bool:
+
+
+
+def is_command_message(message: str) -> bool:
     """
     判断消息是否为指定命令：
     - 以 '/' 开头，后接命令名称
