@@ -13,13 +13,13 @@ NAPCAT_HOST = "localhost"
 NAPCAT_PORT = 3001
 NAPCAT_TOKEN = ""  # 您的 NapCat 访问令牌
 
-# DeepSeek / OpenAI SDK 设置（需提前在环境变量或 config 中配置 DEEPSEEK_API_KEY）
+# DeepSeek / OpenAI SDK 设置
 DEEPSEEK_API_KEY = config.deepseek_api_key
 DEEPSEEK_API_BASE = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"
 # -----------------
 
-# 初始化 AI 客户端（分离后的模块）
+# 初始化 AI 客户端
 ai_client = DeepSeekClient(
     api_key=DEEPSEEK_API_KEY,
     api_base=DEEPSEEK_API_BASE,
