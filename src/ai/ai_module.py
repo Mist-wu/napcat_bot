@@ -1,13 +1,5 @@
 import asyncio
 from openai import OpenAI
-import os
-import dotenv
-
-dotenv.load_dotenv()
-
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_API_BASE = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-chat"
 
 class DeepSeekClient:
     """
@@ -16,7 +8,7 @@ class DeepSeekClient:
     - 异步方法：call（外部调用）
     """
 
-    def __init__(self, api_key: str = DEEPSEEK_API_KEY, api_base: str = DEEPSEEK_API_BASE, model: str = DEEPSEEK_MODEL):
+    def __init__(self, api_key: str, api_base: str, model: str):
         self.api_key = api_key
         self.api_base = api_base
         self.model = model
