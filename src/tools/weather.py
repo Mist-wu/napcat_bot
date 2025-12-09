@@ -9,13 +9,7 @@ dotenv.load_dotenv()
 API_KEY = os.getenv("WEATHER_API_KEY")
 
 def get_weather(city: str) -> dict:
-    """
-    获取指定城市的天气信息。
-    参数:
-        city (str): 城市名称
-    返回:
-        dict: 天气信息字典
-    """
+
     url = f'https://api2.wer.plus/api/weather?key={API_KEY}'
     
     response = requests.post(url, data={'city': city})

@@ -4,27 +4,20 @@ from typing import Any, Dict, List
 import config.config as config
 
 import websockets
-
-from src.ai.ai_module import DeepSeekClient as DeepSeekClient  # 引入分离的 AI 模块
+from openai import OpenAI
 
 # --- 配置信息 ---
 target_qq = config.root_user  # 仅响应此 QQ 的私聊消息
+print(f"目标 QQ：{target_qq}")
 NAPCAT_HOST = "localhost"
 NAPCAT_PORT = 3001
 NAPCAT_TOKEN = ""  # 您的 NapCat 访问令牌
 
-# DeepSeek / OpenAI SDK 设置（需提前在环境变量或 config 中配置 DEEPSEEK_API_KEY）
+# DeepSeek / OpenAI SDK 设置（需提前在环境变量中配置 DEEPSEEK_API_KEY）
 DEEPSEEK_API_KEY = config.deepseek_api_key
 DEEPSEEK_API_BASE = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"
 # -----------------
-
-# 初始化 AI 客户端（分离后的模块）
-ai_client = DeepSeekClient(
-    api_key=DEEPSEEK_API_KEY,
-    api_base=DEEPSEEK_API_BASE,
-    model=DEEPSEEK_MODEL,
-)
 
 
 def extract_text_from_message(message: Any) -> str:
@@ -44,6 +37,46 @@ def extract_text_from_message(message: Any) -> str:
         return "".join(parts)
 
     return ""
+
+
+def _call_deepseek_sync(user_text: str) -> str:
+    """
+    同步调用 DeepSeek（OpenAI SDK 兼容），不保留上下文。
+    注意：该函数为同步方法，外部通过 asyncio.to_thread 调用。
+    """
+    if not DEEPSEEK_API_KEY:
+        return "（未配置 DEEPSEEK_API_KEY，无法生成回复）"
+
+    client = OpenAI(
+        api_key=DEEPSEEK_API_KEY,
+        base_url=DEEPSEEK_API_BASE,
+    )
+
+    try:
+        resp = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {"role": "system", "content": "你是一个友好的 QQ 聊天机器人。"},
+                {"role": "user", "content": user_text},
+            ],
+            stream=False,
+            temperature=0.7,
+        )
+        content = (
+            resp.choices[0].message.content
+            if resp.choices and resp.choices[0].message
+            else ""
+        )
+        return content.strip() if content else "（AI 无回复内容）"
+    except Exception as e:
+        return f"（AI 调用失败：{e}）"
+
+
+async def call_ai(user_text: str) -> str:
+    """
+    异步封装，在线程池中调用同步 DeepSeek SDK，避免阻塞事件循环。
+    """
+    return await asyncio.to_thread(_call_deepseek_sync, user_text)
 
 
 async def handle_message(websocket, event: Dict[str, Any]) -> None:
@@ -70,7 +103,7 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
 
     print(f"[收到] 来自 {user_id} 的消息: {text}")
 
-    ai_reply = await ai_client.call(text)
+    ai_reply = await call_ai(text)
     print(f"[AI 回复] {ai_reply}")
 
     reply_payload = {
