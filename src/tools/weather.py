@@ -131,4 +131,4 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
         return f"❌ 天气信息解析失败: {str(e)}"
 
 if __name__ == "__main__":
-    print(format_weather_info(get_weather("北京")))
+    print(format_weather_info(get_weather("上海")))
