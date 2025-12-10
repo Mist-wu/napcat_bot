@@ -20,6 +20,10 @@ def diu_img(id: str) -> str:
     url = f"https://api.lolimi.cn/API/diu/api.php?QQ={id}"
     return f"[CQ:image,url={url}]"
 
+def si_img(id: str) -> str:
+    url = f"https://api.lolimi.cn/API/si/api.php?QQ={id}"
+    return f"[CQ:image,url={url}]"
+
 def extract_qq_from_at(text: str) -> str:
     import re
     m = re.search(r"\[CQ:at,qq=(\d+)\]", text)
@@ -56,6 +60,11 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
         if not qq:
             qq = user_id
         return diu_img(qq)
+    if command == "撕":
+        qq = extract_qq_from_at(args) if args else None
+        if not qq:
+            qq = user_id
+        return si_img(qq)
     return "未识别的指令"
 
 async def process_private_text(message: str, ai_client, user_id: str = "") -> str:
