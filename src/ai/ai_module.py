@@ -20,7 +20,7 @@ class DeepSeekClient:
 
     def _call_sync(self, user_text: str) -> str:
         """
-        同步调用，不保留上下文。供异步封装通过线程调用。
+        同步调用。供异步封装通过线程调用。
         """
         if not self.api_key:
             return "（未配置 DEEPSEEK_API_KEY，无法生成回复）"
