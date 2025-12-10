@@ -48,7 +48,8 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
     ).strip()
     if not text:
         return
-    reply = await handler.process_private_text(text, ai_client)
+    # 关键：传 user_id 给 handler.process_private_text
+    reply = await handler.process_private_text(text, ai_client, user_id)
     if not reply:
         return
     if msg_type == "private":
