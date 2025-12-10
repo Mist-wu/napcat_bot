@@ -1,0 +1,8 @@
+[
+  {
+    "id": "bot_update",
+    "execute-command": "/root/napcat_bot/update_and_restart.sh",
+    "command-working-directory": "/root/napcat_bot/",
+    "pass-arguments-to-command": []
+  }
+]
