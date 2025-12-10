@@ -5,7 +5,6 @@ def is_command_message(message: str) -> bool:
     return message.startswith("/")
 
 def long_img() -> str:
-    # 返回CQ码图片
     url = "https://api.lolimi.cn/API/longt/l.php"
     return f"[CQ:image,url={url}]"
 
@@ -13,8 +12,11 @@ def bite_img(id: str) -> str:
     url = f"https://api.lolimi.cn/API/face_suck/api.php?QQ={id}"
     return f"[CQ:image,url={url}]"
 
+def play_img(id: str) -> str:
+    url = f"https://api.lolimi.cn/API/face_play/api.php?QQ={id}"
+    return f"[CQ:image,url={url}]"
+
 def extract_qq_from_at(text: str) -> str:
-    # [CQ:at,qq=xxx] 或 @xxx
     import re
     m = re.search(r"\[CQ:at,qq=(\d+)\]", text)
     if m:
@@ -40,6 +42,11 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
         if not qq:
             qq = user_id
         return bite_img(qq)
+    if command == "玩":
+        qq = extract_qq_from_at(args) if args else None
+        if not qq:
+            qq = user_id
+        return play_img(qq)
     return "未识别的指令"
 
 async def process_private_text(message: str, ai_client, user_id: str = "") -> str:
