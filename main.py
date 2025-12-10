@@ -48,7 +48,6 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
     ).strip()
     if not text:
         return
-    # 关键：传 user_id 给 handler.process_private_text
     reply = await handler.process_private_text(text, ai_client, user_id)
     if not reply:
         return
@@ -66,6 +65,7 @@ async def listen_and_respond():
     try:
         async with websockets.connect(uri, additional_headers=headers) as websocket:
             print("连接成功，开始监听消息")
+            await out.send_private_text(websocket, target_qq, "Bot成功启动")
             try:
                 while True:
                     raw = await websocket.recv()
