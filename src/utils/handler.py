@@ -1,5 +1,6 @@
 import asyncio
 from src.tools.weather import get_weather, format_weather_info
+from src.ai.ai_recognize_img import recognize_image
 
 def is_command_message(message: str) -> bool:
     return message.startswith("/")
@@ -34,6 +35,16 @@ def extract_qq_from_at(text: str) -> str:
         return m.group(1)
     return None
 
+def extract_image_urls(message):
+    urls = []
+    if isinstance(message, list):
+        for seg in message:
+            if isinstance(seg, dict) and seg.get("type") in ["image", "face"]:
+                img_url = seg.get("data", {}).get("url")
+                if img_url:
+                    urls.append(img_url)
+    return urls
+
 async def handle_command_message(message: str, user_id: str = "") -> str:
     parts = message.strip().split(maxsplit=1)
     command = parts[0][1:].lower()
@@ -67,7 +78,16 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
         return si_img(qq)
     return "未识别的指令"
 
-async def process_private_text(message: str, ai_client, user_id: str = "") -> str:
+async def process_private_text(message, ai_client, user_id: str = "") -> str:
     if is_command_message(message):
         return await handle_command_message(message, user_id)
     return await ai_client.call(message)
+
+async def process_image_message(image_urls, ai_client, user_id: str = "") -> str:
+    result_list = []
+    for url in image_urls:
+        result = await recognize_image(url)
+        result_list.append(result)
+    recog = "\n".join(result_list)
+    prompt = f"用户发送了一张图片，图片内容识别为：{recog}"
+    return await ai_client.call(prompt)

@@ -32,6 +32,17 @@ def extract_text_from_message(message: Any) -> str:
         return "".join(parts)
     return ""
 
+def extract_image_urls(message: Any) -> List[str]:
+    urls = []
+    if isinstance(message, list):
+        for seg in message:
+            if isinstance(seg, dict) and seg.get("type") in ["image", "face"]:
+                img_url = seg.get("data", {}).get("url")
+                if img_url:
+                    urls.append(img_url)
+    print(urls)
+    return urls
+
 async def handle_message(websocket, event: Dict[str, Any]) -> None:
     if event.get("post_type") != "message":
         return
@@ -41,14 +52,20 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
     user_id = str(event.get("user_id", ""))
     if user_id != str(target_qq):
         return
+    message = event.get("message")
     text = (
         event.get("raw_message")
-        or extract_text_from_message(event.get("message"))
+        or extract_text_from_message(message)
         or ""
     ).strip()
-    if not text:
-        return
-    reply = await handler.process_private_text(text, ai_client, user_id)
+    image_urls = extract_image_urls(message)
+
+    if image_urls:
+        reply = await handler.process_image_message(image_urls, ai_client, user_id)
+    else:
+        if not text:
+            return
+        reply = await handler.process_private_text(text, ai_client, user_id)
     if not reply:
         return
     if msg_type == "private":
