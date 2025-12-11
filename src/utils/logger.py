@@ -224,16 +224,6 @@ class WebSocketLogHandler(logging.Handler):
                 "message": message,
             }
 
-            # 异步广播日志(不阻塞日志记录)
-            try:
-                import asyncio
-                from src.webui.logs_ws import broadcast_log
-
-                asyncio.run_coroutine_threadsafe(broadcast_log(log_data), self.loop)
-            except Exception:
-                # WebSocket 推送失败不影响日志记录
-                pass
-
         except Exception:
             # 不要让 WebSocket 错误影响日志系统
             self.handleError(record)
