@@ -5,7 +5,6 @@ import config.config as config
 import websockets
 from src.ai.ai_module import DeepSeekClient
 from src.utils import handler, out
-import aiohttp
 
 target_qq = config.root_user
 NAPCAT_HOST = config.napcat_host
