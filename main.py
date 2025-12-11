@@ -5,6 +5,7 @@ import config.config as config
 import websockets
 from src.ai.ai_module import DeepSeekClient
 from src.utils import handler, out
+import aiohttp
 
 target_qq = config.root_user
 NAPCAT_HOST = config.napcat_host
@@ -43,8 +44,25 @@ def extract_image_urls(message: Any) -> List[str]:
     print(urls)
     return urls
 
+async def get_group_member_nickname(group_id: int, user_id: int) -> str:
+    url = f"http://{NAPCAT_HOST}:{NAPCAT_PORT}/get_group_member_info"
+    headers = {'Authorization': f'Bearer {NAPCAT_TOKEN}'}
+    params = {'group_id': group_id, 'user_id': user_id}
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params) as resp:
+            if resp.status != 200:
+                print(f"获取群成员昵称失败，状态码: {resp.status}")
+                return str(user_id)
+            try:
+                data = await resp.json()
+            except Exception:
+                print("获取群成员昵称失败，无法解析响应")
+                return str(user_id)
+            nickname = data.get("card") or data.get("nickname") or str(user_id)
+            print(f"获取群成员昵称: {nickname}")
+            return nickname
+
 async def handle_message(websocket, event: Dict[str, Any]) -> None:
-    # 消息事件
     if event.get("post_type") == "message":
         msg_type = event.get("message_type")
         if msg_type not in ["private", "group"]:
@@ -81,12 +99,12 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
         notice_type = event.get("notice_type")
         group_id = event.get("group_id")
         user_id = event.get("user_id")
-        nickname = event.get("user_nickname") or event.get("nickname", "")
-        print(f"收到群成员变动通知: {notice_type} - 用户ID: {user_id} 昵称: {nickname}")
         if notice_type == "group_increase":  # 新成员加群
+            nickname = await get_group_member_nickname(group_id, user_id)
             welcome_text = f"欢迎 {nickname}（{user_id}）加入本群！"
             await out.send_group_text(websocket, group_id, welcome_text)
         elif notice_type == "group_decrease":  # 成员退群
+            nickname = await get_group_member_nickname(group_id, user_id)
             leave_text = f"成员 {nickname}（{user_id}） 已离开本群，祝一路顺风！"
             await out.send_group_text(websocket, group_id, leave_text)
         return
