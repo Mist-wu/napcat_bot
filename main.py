@@ -44,36 +44,50 @@ def extract_image_urls(message: Any) -> List[str]:
     return urls
 
 async def handle_message(websocket, event: Dict[str, Any]) -> None:
-    if event.get("post_type") != "message":
-        return
-    msg_type = event.get("message_type")
-    if msg_type not in ["private", "group"]:
-        return
-    user_id = str(event.get("user_id", ""))
-    if user_id != str(target_qq):
-        return
-    message = event.get("message")
-    text = (
-        event.get("raw_message")
-        or extract_text_from_message(message)
-        or ""
-    ).strip()
-    image_urls = extract_image_urls(message)
-
-    if image_urls:
-        reply = await handler.process_image_message(image_urls, ai_client, user_id)
-    else:
-        if not text:
+    # 消息事件
+    if event.get("post_type") == "message":
+        msg_type = event.get("message_type")
+        if msg_type not in ["private", "group"]:
             return
-        reply = await handler.process_private_text(text, ai_client, user_id)
-    if not reply:
+        user_id = str(event.get("user_id", ""))
+        if user_id != str(target_qq):
+            return
+        message = event.get("message")
+        text = (
+            event.get("raw_message")
+            or extract_text_from_message(message)
+            or ""
+        ).strip()
+        image_urls = extract_image_urls(message)
+
+        if image_urls:
+            reply = await handler.process_image_message(image_urls, ai_client, user_id)
+        else:
+            if not text:
+                return
+            reply = await handler.process_private_text(text, ai_client, user_id)
+        if not reply:
+            return
+        if msg_type == "private":
+            await out.send_private_text(websocket, target_qq, reply)
+        elif msg_type == "group":
+            group_id = event.get("group_id")
+            if group_id:
+                await out.send_group_text(websocket, group_id, reply)
         return
-    if msg_type == "private":
-        await out.send_private_text(websocket, target_qq, reply)
-    elif msg_type == "group":
+
+    # 群成员变动事件（加群/退群）
+    if event.get("post_type") == "notice":
+        notice_type = event.get("notice_type")
         group_id = event.get("group_id")
-        if group_id:
-            await out.send_group_text(websocket, group_id, reply)
+        user_id = event.get("user_id")
+        if notice_type == "group_increase":  # 新成员加群
+            welcome_text = f"欢迎 {user_id} 加入本群！"
+            await out.send_group_text(websocket, group_id, welcome_text)
+        elif notice_type == "group_decrease":  # 成员退群
+            leave_text = f"成员 {user_id} 已离开本群，祝一路顺风！"
+            await out.send_group_text(websocket, group_id, leave_text)
+        return
 
 async def listen_and_respond():
     uri = f"ws://{NAPCAT_HOST}:{NAPCAT_PORT}/ws"
