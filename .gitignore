@@ -3,7 +3,6 @@ logs/
 
 
 # 配置文件
-config.yaml
 update_and_restart.sh
 
 # NapCat 相关
