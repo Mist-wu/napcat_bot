@@ -44,23 +44,22 @@ def extract_image_urls(message: Any) -> List[str]:
     print(urls)
     return urls
 
-async def get_group_member_nickname(group_id: int, user_id: int) -> str:
-    url = f"http://{NAPCAT_HOST}:{NAPCAT_PORT}/get_group_member_info"
-    headers = {'Authorization': f'Bearer {NAPCAT_TOKEN}'}
-    params = {'group_id': group_id, 'user_id': user_id}
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers, params=params) as resp:
-            if resp.status != 200:
-                print(f"获取群成员昵称失败，状态码: {resp.status}")
-                return str(user_id)
-            try:
-                data = await resp.json()
-            except Exception:
-                print("获取群成员昵称失败，无法解析响应")
-                return str(user_id)
-            nickname = data.get("card") or data.get("nickname") or str(user_id)
-            print(f"获取群成员昵称: {nickname}")
-            return nickname
+async def get_group_member_nickname(websocket, group_id: int, user_id: int) -> str:
+    payload = {
+        "action": "get_group_member_info",
+        "params": {"group_id": group_id, "user_id": user_id},
+    }
+    await websocket.send(json.dumps(payload))
+    resp_raw = await websocket.recv()
+    try:
+        resp = json.loads(resp_raw)
+    except Exception:
+        print(f"获取群成员昵称失败，无法解析响应: {resp_raw}")
+        return str(user_id)
+    data = resp.get("data", {})
+    nickname = data.get("card") or data.get("nickname") or str(user_id)
+    print(f"获取群成员昵称: {nickname}")
+    return nickname
 
 async def handle_message(websocket, event: Dict[str, Any]) -> None:
     if event.get("post_type") == "message":
