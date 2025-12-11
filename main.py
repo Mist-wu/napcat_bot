@@ -98,13 +98,12 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
         notice_type = event.get("notice_type")
         group_id = event.get("group_id")
         user_id = event.get("user_id")
-        if notice_type == "group_increase":  # 新成员加群
-            nickname = await get_group_member_nickname(group_id, user_id)
+        if notice_type == "group_increase":  # 新成员加群)
+            nickname = await get_group_member_nickname(websocket, group_id, user_id)
             welcome_text = f"欢迎 {nickname}（{user_id}）加入本群！"
             await out.send_group_text(websocket, group_id, welcome_text)
         elif notice_type == "group_decrease":  # 成员退群
-            nickname = await get_group_member_nickname(group_id, user_id)
-            leave_text = f"成员 {nickname}（{user_id}） 已离开本群，祝一路顺风！"
+            leave_text = f"成员 {user_id} 已离开本群，祝一路顺风！"
             await out.send_group_text(websocket, group_id, leave_text)
         return
 
