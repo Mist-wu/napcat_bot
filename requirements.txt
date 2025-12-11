@@ -3,3 +3,5 @@ python-dotenv
 websockets
 openai
 aiohttp
+tomlkit
+structlog

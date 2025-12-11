@@ -98,3 +98,48 @@
 - 可维护性（模块职责、测试可写性、日志与配置管理）。
 
 请在实现中严格遵循以上要求，代码务必简洁明确，注释仅保留必要信息；可在合理范围内增删文件以达成目标。
+
+
+   1. 核心聊天逻辑 (ai/chat/)
+
+   这是机器人的“大脑”和“心脏”，处理消息流转和回复生成。
+
+     - message_receive/: 消息接收与预处理。
+       - bot.py: 包含 chat_bot 对象，定义了核心的 message_process 函数。
+       - chat_stream.py: 聊天流管理器。
+     - heart_flow/: 核心心流处理系统（HeartFlow），控制消息的处理流程。
+       - heartflow.py: 心流主逻辑。
+       - heartflow_message_processor.py: 消息处理器。
+     - brain_chat/: 高级推理与规划。
+       - brain_chat.py, brain_planner.py: 负责复杂的对话规划。
+     - replyer/: 回复生成器。
+       - replyer_manager.py: 管理回复生成。
+       - group_generator.py, private_generator.py: 分别处理群聊和私聊的回复生成。
+     - planner_actions/: 规划器可执行的动作（如调用工具）。
+     - frequency_control/: 频率控制，防止机器人刷屏。
+     - emoji_system/: 表情包管理系统。
+
+   2. LLM 模型接口 (ai/llm_models/)
+
+   负责与大语言模型进行交互。
+
+     - model_client/: 不同模型的客户端实现。。
+
+   3. 记忆与知识库 (ai/memory_system/ & ai/chat/knowledge/)
+
+   负责机器人的长期记忆和知识检索。
+
+     - ai/memory_system/: 记忆检索系统。
+       - memory_retrieval.py: 记忆检索主逻辑。
+       - retrieval_tools/: 具体的检索工具（如查询聊天记录、人物信息等）。
+     - ai/chat/knowledge/: 知识图谱与嵌入存储。
+       - kg_manager.py: 知识图谱管理。
+       - embedding_store.py: 向量存储。
+       - qa_manager.py: 问答管理。
+
+   4. 其他重要模块
+
+     - ai/mood/: 情绪管理系统 (mood_manager.py)，让机器人拥有情绪状态。
+     - ai/person_info/: 用户信息管理，记录交互对象的信息。
+     - ai/express/: 表情/表达学习与选择模块。
+     - config/: 机器人配置
