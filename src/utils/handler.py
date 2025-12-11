@@ -84,10 +84,17 @@ async def process_private_text(message, ai_client, user_id: str = "") -> str:
     return await ai_client.call(message)
 
 async def process_image_message(image_urls, ai_client, user_id: str = "") -> str:
+    print(f"[图片识别] 收到图片url列表: {image_urls}")
     result_list = []
     for url in image_urls:
+        print(f"[图片识别] 开始识别: {url}")
         result = await recognize_image(url)
+        print(f"[图片识别] 单张识别结果: {result}")
         result_list.append(result)
     recog = "\n".join(result_list)
+    print(f"[图片识别] 全部识别结果拼接: {recog}")
     prompt = f"用户发送了一张图片，图片内容识别为：{recog}"
-    return await ai_client.call(prompt)
+    print(f"[图片识别] 送入AI生成的消息内容: {prompt}")
+    reply = await ai_client.call(prompt)
+    print(f"[图片识别] AI最终回复: {reply}")
+    return reply
