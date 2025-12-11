@@ -126,7 +126,7 @@ async def listen_and_respond():
                     await handle_message(websocket, event)
             except asyncio.CancelledError:
                 print("接收到退出信号，安全关闭中...")
-    except websockets.exceptions.InvalidStatusCode as e:
+    except websockets.InvalidStatusCode as e:
         print(f"连接失败，状态码: {e.status_code}")
     except ConnectionRefusedError:
         print(f"连接被拒绝，请检查 {NAPCAT_HOST}:{NAPCAT_PORT} 是否可用")
