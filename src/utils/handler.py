@@ -18,7 +18,7 @@ def baisi_img() -> str:
     return f"[CQ:image,url={url}]"
 
 def ecy_img() -> str:
-    url = "https://api.seaya.link/random"
+    url = "https://api.seaya.link/random?type=file"
     return f"[CQ:image,url={url}]"
 
 def bite_img(id: str) -> str:
