@@ -40,7 +40,6 @@ def extract_image_urls(message: Any) -> List[str]:
                 img_url = seg.get("data", {}).get("url")
                 if img_url:
                     urls.append(img_url)
-    print(urls)
     return urls
 
 async def get_group_member_nickname(websocket, group_id: int, user_id: int) -> str:
