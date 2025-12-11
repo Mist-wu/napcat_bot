@@ -9,6 +9,10 @@ def long_img() -> str:
     url = "https://api.lolimi.cn/API/longt/l.php"
     return f"[CQ:image,url={url}]"
 
+def cat_img() -> str:
+    url = "https://edgecats.net/"
+    return f"[CQ:image,url={url}]"
+
 def bite_img(id: str) -> str:
     url = f"https://api.lolimi.cn/API/face_suck/api.php?QQ={id}"
     return f"[CQ:image,url={url}]"
@@ -56,6 +60,8 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
         return format_weather_info(data)
     if command == "龙图":
         return long_img()
+    if command == "猫":
+        return cat_img()
     if command == "咬":
         qq = extract_qq_from_at(args) if args else None
         if not qq:
