@@ -13,6 +13,10 @@ def cat_img() -> str:
     url = "https://edgecats.net/"
     return f"[CQ:image,url={url}]"
 
+def baisi_img() -> str:
+    url = "https://v2.xxapi.cn/api/baisi?return=302"
+    return f"[CQ:image,url={url}]"
+
 def bite_img(id: str) -> str:
     url = f"https://api.lolimi.cn/API/face_suck/api.php?QQ={id}"
     return f"[CQ:image,url={url}]"
@@ -62,6 +66,8 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
         return long_img()
     if command == "猫":
         return cat_img()
+    if command == "白丝":
+        return baisi_img()
     if command == "咬":
         qq = extract_qq_from_at(args) if args else None
         if not qq:
