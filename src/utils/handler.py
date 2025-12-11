@@ -72,8 +72,8 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
         return cat_img()
     if command == "白丝":
         return baisi_img()
-    # if command == "二次元":
-    #     return ecy_img()
+    if command == "二次元":
+        return ecy_img()
     if command == "咬":
         qq = extract_qq_from_at(args) if args else None
         if not qq:
