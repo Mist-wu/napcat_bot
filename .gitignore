@@ -11,6 +11,7 @@ napcat/
 # Python
 __pycache__/
 .env
+test.py
 
 # 数据文件
 data/
