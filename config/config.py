@@ -4,7 +4,7 @@ import platform
 
 if platform.system() == "Windows":
     napcat_host = "178.128.61.90"
-else:  
+else:
     napcat_host = "0.0.0.0"
 
 dotenv.load_dotenv()
@@ -15,16 +15,26 @@ napcat_token = os.getenv("NAPCAT_TOKEN")
 
 root_user = "2550166270"
 
-# 群聊白名单：允许bot工作的群号
-group_whitelist = [
+group_whitelist = set([
     1051660592,
-]
+])
 
-# 用户白名单：允许私聊唤醒bot的用户
-user_whitelist = [
+user_whitelist = set([
     root_user,
-]
+])
 
-# 用户黑名单：无论群聊还是私聊，禁止bot回复这些用户
-user_blacklist = [
-]
+user_blacklist = set([
+])
+
+def is_user_allowed(user_id: str) -> bool:
+    if str(user_id) in user_blacklist:
+        return False
+    if str(user_id) in user_whitelist:
+        return True
+    return False
+
+def is_group_allowed(group_id: int) -> bool:
+    return int(group_id) in group_whitelist
+
+def is_user_blacklisted(user_id: str) -> bool:
+    return str(user_id) in user_blacklist

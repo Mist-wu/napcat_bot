@@ -65,8 +65,21 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
         if msg_type not in ["private", "group"]:
             return
         user_id = str(event.get("user_id", ""))
-        if user_id != str(target_qq):
+        group_id = event.get("group_id", None)
+
+        # 黑名单拦截
+        if config.is_user_blacklisted(user_id):
             return
+
+        # 群聊白名单
+        if msg_type == "group":
+            if not group_id or not config.is_group_allowed(group_id):
+                return
+        # 私聊白名单
+        if msg_type == "private":
+            if not config.is_user_allowed(user_id):
+                return
+
         message = event.get("message")
         text = (
             event.get("raw_message")
@@ -91,16 +104,15 @@ async def handle_message(websocket, event: Dict[str, Any]) -> None:
                 await out.send_group_text(websocket, group_id, reply)
         return
 
-    # 群成员变动事件（加群/退群）
     if event.get("post_type") == "notice":
         notice_type = event.get("notice_type")
         group_id = event.get("group_id")
         user_id = event.get("user_id")
-        if notice_type == "group_increase":  # 新成员加群)
+        if notice_type == "group_increase":
             nickname = await get_group_member_nickname(websocket, group_id, user_id)
             welcome_text = f"欢迎 {nickname}（{user_id}）加入本群！"
             await out.send_group_text(websocket, group_id, welcome_text)
-        elif notice_type == "group_decrease":  # 成员退群
+        elif notice_type == "group_decrease":
             leave_text = f"成员 {user_id} 已离开本群，祝一路顺风！"
             await out.send_group_text(websocket, group_id, leave_text)
         return
