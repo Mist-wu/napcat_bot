@@ -1,4 +1,5 @@
 import aiohttp
+import asyncio
 
 async def recognize_image(url: str) -> str:
     api_url = "https://api.pearktrue.cn/api/airecognizeimg/"
@@ -17,11 +18,8 @@ async def recognize_image(url: str) -> str:
                 return f"图片识别失败：{data.get('msg', '未知错误')}"
 
 async def process_image_message(image_urls, ai_client, user_id: str = "") -> str:
-    result_list = []
-    for url in image_urls:
-        result = await recognize_image(url)
-        result_list.append(result)
-    recog = "\n".join(result_list)
+    recog_results = await asyncio.gather(*(recognize_image(url) for url in image_urls))
+    recog = "\n".join(recog_results)
     prompt = f"用户发送了一张图片，图片内容识别为：{recog}"
     reply = await ai_client.call(prompt)
     return reply
