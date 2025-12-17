@@ -14,8 +14,6 @@ def get_weather(city: str) -> dict:
     return response.json()
  
 def get_timezone(lat: float, lon: float) -> ZoneInfo:
-    # 中国大陆全部归 Asia/Shanghai，世界范围可以用专业库，这里只用于中国
-    # 若业务需求全球时区可用 timezonefinder，napcat api只需简单场景
     return ZoneInfo("Asia/Shanghai")
 
 def format_weather_info(weather_data: Dict[str, Any]) -> str:
@@ -114,7 +112,6 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
 
         last_updated = weather.get('metadata', {}).get('last_updated', '未知')
         if last_updated and last_updated != '未知':
-            # last_updated 为ISO8601, 例如 2025-12-09T13:43:07+00:00
             try:
                 dt_utc = datetime.fromisoformat(last_updated.replace("Z", "+00:00")).astimezone(timezone.utc)
                 zone = get_timezone(lat, lon)
@@ -129,6 +126,3 @@ def format_weather_info(weather_data: Dict[str, Any]) -> str:
         return output.strip()
     except Exception as e:
         return f"❌ 天气信息解析失败: {str(e)}"
-
-if __name__ == "__main__":
-    print(format_weather_info(get_weather("上海")))

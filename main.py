@@ -1,46 +1,23 @@
 import asyncio
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict
 import config.config as config
-import websockets
-from src.ai.ai_module import DeepSeekClient
-from src.utils import handler, out
+from src.utils.extract import extract_text_from_message, extract_image_urls
+from src.utils.output import send_private_text, send_group_text
+from src.tools.command import handle_command_message
+from src.ai.ai_deepseek import DeepSeekClient
+from src.ai.img_recog import process_image_message
 
 target_qq = config.root_user
 NAPCAT_HOST = config.napcat_host
 NAPCAT_PORT = 3001
 NAPCAT_TOKEN = config.napcat_token
 
-DEEPSEEK_API_KEY = config.deepseek_api_key
-DEEPSEEK_API_BASE = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-chat"
-
 ai_client = DeepSeekClient(
-    api_key=DEEPSEEK_API_KEY,
-    api_base=DEEPSEEK_API_BASE,
-    model=DEEPSEEK_MODEL
+    api_key=config.deepseek_api_key,
+    api_base="https://api.deepseek.com",
+    model="deepseek-chat"
 )
-
-def extract_text_from_message(message: Any) -> str:
-    if isinstance(message, str):
-        return message
-    if isinstance(message, list):
-        parts: List[str] = []
-        for seg in message:
-            if isinstance(seg, dict) and seg.get("type") == "text":
-                parts.append(str(seg.get("data", {}).get("text", "")))
-        return "".join(parts)
-    return ""
-
-def extract_image_urls(message: Any) -> List[str]:
-    urls = []
-    if isinstance(message, list):
-        for seg in message:
-            if isinstance(seg, dict) and seg.get("type") in ["image", "face"]:
-                img_url = seg.get("data", {}).get("url")
-                if img_url:
-                    urls.append(img_url)
-    return urls
 
 async def get_group_member_nickname(websocket, group_id: int, user_id: int) -> str:
     payload = {
@@ -55,76 +32,76 @@ async def get_group_member_nickname(websocket, group_id: int, user_id: int) -> s
         print(f"获取群成员昵称失败，无法解析响应: {resp_raw}")
         return str(user_id)
     data = resp.get("data", {})
-    nickname = data.get("card") or data.get("nickname") or str(user_id)
-    print(f"获取群成员昵称: {nickname}")
-    return nickname
+    return data.get("card") or data.get("nickname") or str(user_id)
 
-async def handle_message(websocket, event: Dict[str, Any]) -> None:
-    if event.get("post_type") == "message":
+async def handle_private_message(websocket, event, text, image_urls, user_id):
+    if config.is_user_blacklisted(user_id):
+        return
+    if not config.is_user_allowed(user_id):
+        return
+    if image_urls:
+        reply = await process_image_message(image_urls, ai_client, user_id)
+    elif text.startswith("/"):
+        reply = await handle_command_message(text, user_id)
+    elif text:
+        reply = await ai_client.call(text)
+    else:
+        return
+    if reply:
+        await send_private_text(websocket, user_id, reply)
+
+async def handle_group_message(websocket, event, text, image_urls, user_id, group_id):
+    if config.is_user_blacklisted(user_id):
+        return
+    if not config.is_group_allowed(group_id):
+        return
+    if image_urls:
+        reply = await process_image_message(image_urls, ai_client, user_id)
+    elif text.startswith("/"):
+        reply = await handle_command_message(text, user_id)
+    elif text:
+        reply = await ai_client.call(text)
+    else:
+        return
+    if reply:
+        await send_group_text(websocket, group_id, reply)
+
+async def handle_notice(websocket, event):
+    typ = event.get("notice_type")
+    group_id = event.get("group_id")
+    user_id = event.get("user_id")
+    if typ == "group_increase":
+        nickname = await get_group_member_nickname(websocket, group_id, user_id)
+        welcome_text = f"欢迎 {nickname}（{user_id}）加入本群！"
+        await send_group_text(websocket, group_id, welcome_text)
+    elif typ == "group_decrease":
+        leave_text = f"成员 {user_id} 已离开本群，祝一路顺风！"
+        await send_group_text(websocket, group_id, leave_text)
+
+async def handle_event(websocket, event: Dict[str, Any]):
+    post_type = event.get("post_type")
+    if post_type == "message":
         msg_type = event.get("message_type")
-        if msg_type not in ["private", "group"]:
-            return
         user_id = str(event.get("user_id", ""))
-        group_id = event.get("group_id", None)
-
-        # 黑名单拦截
-        if config.is_user_blacklisted(user_id):
-            return
-
-        # 群聊白名单
-        if msg_type == "group":
-            if not group_id or not config.is_group_allowed(group_id):
-                return
-        # 私聊白名单
-        if msg_type == "private":
-            if not config.is_user_allowed(user_id):
-                return
-
-        message = event.get("message")
-        text = (
-            event.get("raw_message")
-            or extract_text_from_message(message)
-            or ""
-        ).strip()
-        image_urls = extract_image_urls(message)
-
-        if image_urls:
-            reply = await handler.process_image_message(image_urls, ai_client, user_id)
-        else:
-            if not text:
-                return
-            reply = await handler.process_private_text(text, ai_client, user_id)
-        if not reply:
-            return
-        if msg_type == "private":
-            await out.send_private_text(websocket, target_qq, reply)
-        elif msg_type == "group":
-            group_id = event.get("group_id")
-            if group_id:
-                await out.send_group_text(websocket, group_id, reply)
-        return
-
-    if event.get("post_type") == "notice":
-        notice_type = event.get("notice_type")
         group_id = event.get("group_id")
-        user_id = event.get("user_id")
-        if notice_type == "group_increase":
-            nickname = await get_group_member_nickname(websocket, group_id, user_id)
-            welcome_text = f"欢迎 {nickname}（{user_id}）加入本群！"
-            await out.send_group_text(websocket, group_id, welcome_text)
-        elif notice_type == "group_decrease":
-            leave_text = f"成员 {user_id} 已离开本群，祝一路顺风！"
-            await out.send_group_text(websocket, group_id, leave_text)
-        return
+        message = event.get("message")
+        text = (event.get("raw_message") or extract_text_from_message(message) or "").strip()
+        image_urls = extract_image_urls(message)
+        if msg_type == "private":
+            await handle_private_message(websocket, event, text, image_urls, user_id)
+        elif msg_type == "group":
+            await handle_group_message(websocket, event, text, image_urls, user_id, group_id)
+    elif post_type == "notice":
+        await handle_notice(websocket, event)
 
 async def listen_and_respond():
     uri = f"ws://{NAPCAT_HOST}:{NAPCAT_PORT}/ws"
     headers = {"Authorization": f"Bearer {NAPCAT_TOKEN}"}
     print(f"正在连接到 NapCatQQ 服务器: {uri}")
     try:
-        async with websockets.connect(uri, additional_headers=headers) as websocket:
+        async with __import__("websockets").connect(uri, additional_headers=headers) as websocket:
             print("连接成功，开始监听消息")
-            await out.send_private_text(websocket, target_qq, "Bot成功启动")
+            await send_private_text(websocket, target_qq, "Bot成功启动")
             try:
                 while True:
                     raw = await websocket.recv()
@@ -133,13 +110,9 @@ async def listen_and_respond():
                     except json.JSONDecodeError:
                         print(f"[警告] 无法解析的消息: {raw}")
                         continue
-                    await handle_message(websocket, event)
+                    await handle_event(websocket, event)
             except asyncio.CancelledError:
                 print("接收到退出信号，安全关闭中...")
-    except websockets.InvalidStatusCode as e:
-        print(f"连接失败，状态码: {e.status_code}")
-    except ConnectionRefusedError:
-        print(f"连接被拒绝，请检查 {NAPCAT_HOST}:{NAPCAT_PORT} 是否可用")
     except Exception as e:
         print(f"发生错误: {e}")
 
