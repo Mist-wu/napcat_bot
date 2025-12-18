@@ -48,7 +48,7 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
             return "请在指令后输入城市名，例如：/天气 北京"
         data = await asyncio.to_thread(get_weather, args)
         return format_weather_info(data)
-    if command == "龙图":
+    if command == "龙":
         return long_img()
     if command == "猫":
         return cat_img()
