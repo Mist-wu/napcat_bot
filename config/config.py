@@ -18,7 +18,7 @@ jiang_kai_yuan = "3092760442"
 
 # 分别为AI聊天和指令白名单，填入群号
 group_ai_whitelist = {1051660592}
-group_cmd_whitelist = {1051660592}
+group_cmd_whitelist = {1051660592,1025246329}
 
 user_whitelist = {root_user, jiang_kai_yuan}
 user_blacklist = set()
