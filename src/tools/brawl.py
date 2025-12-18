@@ -39,3 +39,40 @@ def format_club_info(club_dict):
         )
     return text
 
+def get_player_info(player_tag):
+    url = f"https://api.brawlstars.top/api/player/{player_tag}"
+    try:
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        player_dict = r.json()
+        if player_dict.get("success"):
+            return format_player_info(player_dict)
+    except Exception as e:
+        return f"请求出错：{e}"
+
+def format_player_info(player_dict):
+    player = player_dict['query']
+    name = player.get('name', '')
+    total_trophies = player.get('data', {}).get('trophiesInfo', {}).get('totalTrophies', 0)
+    brawlpass = '已购买' if player.get('brawlpass', False) else '未购买'
+    tag = player.get('tag', '')
+    year = player.get('registerInfo', {}).get('year', '')
+    single_win = int(player.get('data', {}).get('profile', {}).get('single', 0)) - int(player.get('data', {}).get('profile', {}).get('double', 0))
+    double_win = player.get('data', {}).get('profile', {}).get('double', 0)
+    group_win = player.get('data', {}).get('profile', {}).get('group', 0)
+
+    text = (
+        f"昵称：{name}\n"
+        f"总奖杯数：{total_trophies}\n"
+        f"是否购买通行证：{brawlpass}\n"
+        f"战队标签：{tag}\n"
+        f"注册年份：{year}\n"
+        f"3v3模式胜场：{group_win}\n"
+        f"单人模式胜场：{single_win}\n"
+        f"双人模式胜场：{double_win}"
+    )
+    return text
+
+if __name__ == "__main__":
+    tag = input("请输入玩家tag：").strip().upper()
+    print(get_player_info(tag))
