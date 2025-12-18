@@ -1,6 +1,7 @@
 import asyncio
 from src.tools.weather import get_weather, format_weather_info
 from src.utils.extract import extract_qq_from_at
+from src.tools.brawl import get_club_info, get_player_info
 
 def is_command_message(message: str) -> bool:
     return message.startswith("/")
