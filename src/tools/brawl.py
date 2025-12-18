@@ -55,7 +55,7 @@ def format_player_info(player_dict):
     name = player.get('name', '')
     total_trophies = player.get('data', {}).get('trophiesInfo', {}).get('totalTrophies', 0)
     brawlpass = '已购买' if player.get('brawlpass', False) else '未购买'
-    tag = player.get('tag', '')
+    club_tag = player.get('club', {}).get('tag', '')
     year = player.get('registerInfo', {}).get('year', '')
     single_win = int(player.get('data', {}).get('profile', {}).get('single', 0)) - int(player.get('data', {}).get('profile', {}).get('double', 0))
     double_win = player.get('data', {}).get('profile', {}).get('double', 0)
@@ -65,7 +65,7 @@ def format_player_info(player_dict):
         f"昵称：{name}\n"
         f"总奖杯数：{total_trophies}\n"
         f"是否购买通行证：{brawlpass}\n"
-        f"战队标签：{tag}\n"
+        f"战队标签：{club_tag}\n"
         f"注册年份：{year}\n"
         f"3v3模式胜场：{group_win}\n"
         f"单人模式胜场：{single_win}\n"
