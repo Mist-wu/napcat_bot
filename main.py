@@ -53,13 +53,20 @@ async def handle_private_message(websocket, event, text, image_urls, user_id):
 async def handle_group_message(websocket, event, text, image_urls, user_id, group_id):
     if config.is_user_blacklisted(user_id):
         return
-    if not config.is_group_allowed(group_id):
-        return
-    if image_urls:
-        reply = await process_image_message(image_urls, ai_client, user_id)
-    elif text.startswith("/"):
+    if text.startswith("/"):
+        # 指令走指令白名单
+        if not config.is_group_cmd_allowed(group_id):
+            return
         reply = await handle_command_message(text, user_id)
+    elif image_urls:
+        # 图片识别走AI聊天白名单
+        if not config.is_group_ai_allowed(group_id):
+            return
+        reply = await process_image_message(image_urls, ai_client, user_id)
     elif text:
+        # 纯文本走AI聊天白名单
+        if not config.is_group_ai_allowed(group_id):
+            return
         reply = await ai_client.call(text)
     else:
         return

@@ -16,21 +16,28 @@ napcat_token = os.getenv("NAPCAT_TOKEN")
 root_user = "2550166270"
 jiang_kai_yuan = "3092760442"
 
-group_whitelist = {1051660592}
+# 分别为AI聊天和指令白名单，填入群号
+group_ai_whitelist = {1051660592}
+group_cmd_whitelist = {1051660592}
+
 user_whitelist = {root_user, jiang_kai_yuan}
 user_blacklist = set()
 
 def is_user_allowed(user_id: str) -> bool:
     return str(user_id) in user_whitelist and str(user_id) not in user_blacklist
 
-def is_group_allowed(group_id: int) -> bool:
-    return int(group_id) in group_whitelist
+def is_group_ai_allowed(group_id: int) -> bool:
+    return int(group_id) in group_ai_whitelist
+
+def is_group_cmd_allowed(group_id: int) -> bool:
+    return int(group_id) in group_cmd_whitelist
 
 def is_user_blacklisted(user_id: str) -> bool:
     return str(user_id) in user_blacklist
 
 all = {
-    "group_whitelist": group_whitelist,
+    "group_ai_whitelist": group_ai_whitelist,
+    "group_cmd_whitelist": group_cmd_whitelist,
     "user_whitelist": user_whitelist,
     "user_blacklist": user_blacklist,
     "root_user": root_user
