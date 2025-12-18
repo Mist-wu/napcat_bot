@@ -21,7 +21,7 @@ def format_club_info(club_dict):
         f"名称：{club.get('name', '')}\n"
         f"标签：{club.get('tag', '')}\n"
         f"类型：{type_map.get(club.get('type',0),'未知')}\n"
-        f"成员人数：{club.get('memberCount',0)}/{len(club.get('members',[]))}\n"
+        f"成员人数：{club.get('memberCount',0)}\n"
         f"总奖杯数：{club.get('totalTrophies',0)}\n"
         f"入会奖杯要求：{club.get('requiredTrophies',0)}\n"
         f"在线人数：{club.get('onlineCount',0)}\n"
