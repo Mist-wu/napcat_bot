@@ -14,9 +14,10 @@ deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
 napcat_token = os.getenv("NAPCAT_TOKEN")
 
 root_user = "2550166270"
+jiang = "3092760442"
 
 group_whitelist = {1051660592}
-user_whitelist = {root_user}
+user_whitelist = {root_user, jiang}
 user_blacklist = set()
 
 def is_user_allowed(user_id: str) -> bool:
