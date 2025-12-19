@@ -17,7 +17,7 @@ def format_club_info(club_dict):
     role_map = {1: "队员", 3: "资深队员", 4: "副队长", 2: "队长"}
 
     text = (
-        f"🏆 俱乐部信息\n"
+        f"🏆战队信息\n"
         f"名称：{club.get('name', '')}\n"
         f"标签：{club.get('tag', '')}\n"
         f"类型：{type_map.get(club.get('type',0),'未知')}\n"
