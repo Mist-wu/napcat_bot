@@ -14,10 +14,6 @@ def cat_img() -> str:
     url = "https://edgecats.net/"
     return f"[CQ:image,url={url}]"
 
-def baisi_img() -> str:
-    url = "https://v2.xxapi.cn/api/baisi?return=302"
-    return f"[CQ:image,url={url}]"
-
 def ecy_img() -> str:
     url = "https://api.seaya.link/random?type=file"
     return f"[CQ:image,url={url}]"
@@ -45,7 +41,6 @@ def command_list() -> str:
         "/天气 [城市名]",
         "/龙",
         "/猫",
-        "/白丝",
         "/二次元",
         "/咬 [@]",
         "/玩 [@]",
@@ -72,8 +67,6 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
         return long_img()
     if command == "猫":
         return cat_img()
-    if command == "白丝":
-        return baisi_img()
     if command == "二次元":
         return ecy_img()
     if command == "咬":
