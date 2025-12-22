@@ -7,6 +7,7 @@ from src.utils.output import send_private_text, send_group_text
 from src.tools.command import handle_command_message
 from src.ai.ai_deepseek import DeepSeekClient
 from src.ai.img_recog import process_image_message
+from src.ai.context_memory import ContextMemory
 
 target_qq = config.root_user
 NAPCAT_HOST = config.napcat_host
@@ -18,6 +19,7 @@ ai_client = DeepSeekClient(
     api_base="https://api.deepseek.com",
     model="deepseek-chat"
 )
+context_memory = ContextMemory()
 
 async def get_group_member_nickname(websocket, group_id: int, user_id: int) -> str:
     payload = {
@@ -39,12 +41,20 @@ async def handle_private_message(websocket, event, text, image_urls, user_id):
         return
     if not config.is_user_allowed(user_id):
         return
+    await context_memory.add_message('private', user_id, user_id, text)
+    n_ctx = await context_memory.count_context('private', user_id)
+    if n_ctx > 30:
+        await context_memory.summarize_and_shrink('private', user_id, ai_client)
+    context_lines = await context_memory.get_context('private', user_id)
     if image_urls:
         reply = await process_image_message(image_urls, ai_client, user_id)
+        await context_memory.add_message('private', user_id, "bot", reply)
     elif text.startswith("/"):
         reply = await handle_command_message(text, user_id)
     elif text:
-        reply = await ai_client.call(text)
+        ai_input = "\n".join(context_lines + [text])
+        reply = await ai_client.call(ai_input)
+        await context_memory.add_message('private', user_id, "bot", reply)
     else:
         return
     if reply:
@@ -54,20 +64,30 @@ async def handle_group_message(websocket, event, text, image_urls, user_id, grou
     if config.is_user_blacklisted(user_id):
         return
     if text.startswith("/"):
-        # 指令走指令白名单
         if not config.is_group_cmd_allowed(group_id):
             return
         reply = await handle_command_message(text, user_id)
     elif image_urls:
-        # 图片识别走AI聊天白名单
         if not config.is_group_ai_allowed(group_id):
             return
+        await context_memory.add_message('group', group_id, user_id, "[图片] " + ' '.join(image_urls))
+        n_ctx = await context_memory.count_context('group', group_id)
+        if n_ctx > 30:
+            await context_memory.summarize_and_shrink('group', group_id, ai_client)
+        context_lines = await context_memory.get_context('group', group_id)
         reply = await process_image_message(image_urls, ai_client, user_id)
+        await context_memory.add_message('group', group_id, "bot", reply)
     elif text:
-        # 纯文本走AI聊天白名单
         if not config.is_group_ai_allowed(group_id):
             return
-        reply = await ai_client.call(text)
+        await context_memory.add_message('group', group_id, user_id, text)
+        n_ctx = await context_memory.count_context('group', group_id)
+        if n_ctx > 30:
+            await context_memory.summarize_and_shrink('group', group_id, ai_client)
+        context_lines = await context_memory.get_context('group', group_id)
+        ai_input = "\n".join(context_lines + [text])
+        reply = await ai_client.call(ai_input)
+        await context_memory.add_message('group', group_id, "bot", reply)
     else:
         return
     if reply:
@@ -102,6 +122,7 @@ async def handle_event(websocket, event: Dict[str, Any]):
         await handle_notice(websocket, event)
 
 async def listen_and_respond():
+    await context_memory.initialize()
     uri = f"ws://{NAPCAT_HOST}:{NAPCAT_PORT}/ws"
     headers = {"Authorization": f"Bearer {NAPCAT_TOKEN}"}
     print(f"正在连接到 NapCatQQ 服务器: {uri}")
