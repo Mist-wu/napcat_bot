@@ -30,20 +30,52 @@ class ContextMemory:
             )
             await db.commit()
 
-    async def get_context(self, owner_type, owner_id, user_id=None, limit=30):
+    async def get_context(self, owner_type, owner_id, user_id=None, limit=30, mode="mix", user_limit=10, group_limit=20):
         async with aiosqlite.connect(self.db_path) as db:
-            if owner_type == 'private':
+            # 私聊，保持原样
+            if owner_type == 'private' or not user_id or mode == "group_only":
                 cur = await db.execute(
-                    "SELECT message FROM context WHERE owner_type='private' AND owner_id=? ORDER BY timestamp DESC LIMIT ?",
-                    (str(owner_id), limit)
+                    "SELECT message FROM context WHERE owner_type=? AND owner_id=? ORDER BY timestamp DESC LIMIT ?",
+                    (owner_type, str(owner_id), limit)
                 )
-            else:  # 群聊可按需切换为群全局/个人
+                rows = await cur.fetchall()
+                return [row[0] for row in reversed(rows)]
+
+            if mode == "user_only":
                 cur = await db.execute(
-                    "SELECT message FROM context WHERE owner_type='group' AND owner_id=? ORDER BY timestamp DESC LIMIT ?",
-                    (str(owner_id), limit)
+                    "SELECT message FROM context WHERE owner_type='group' AND owner_id=? AND user_id=? ORDER BY timestamp DESC LIMIT ?",
+                    (str(owner_id), str(user_id), limit)
                 )
+                rows = await cur.fetchall()
+                return [row[0] for row in reversed(rows)]
+
+            # mix模式：该用户N条+其他人M条，按时间排序，避免重复
+            if mode == "mix":
+                cur1 = await db.execute(
+                    "SELECT rowid, message, timestamp FROM context WHERE owner_type='group' AND owner_id=? AND user_id=? ORDER BY timestamp DESC LIMIT ?",
+                    (str(owner_id), str(user_id), user_limit)
+                )
+                rows1 = await cur1.fetchall()
+
+                cur2 = await db.execute(
+                    "SELECT rowid, message, timestamp FROM context WHERE owner_type='group' AND owner_id=? AND user_id!=? ORDER BY timestamp DESC LIMIT ?",
+                    (str(owner_id), str(user_id), group_limit)
+                )
+                rows2 = await cur2.fetchall()
+
+                # 合并、去重、升序
+                all_rows = {row[0]: row for row in list(rows1) + list(rows2)}
+                merged = list(all_rows.values())
+                merged.sort(key=lambda x: x[2])  # 升序
+                return [row[1] for row in merged]
+
+            # fallback
+            cur = await db.execute(
+                "SELECT message FROM context WHERE owner_type='group' AND owner_id=? ORDER BY timestamp DESC LIMIT ?",
+                (str(owner_id), limit)
+            )
             rows = await cur.fetchall()
-        return [row[0] for row in reversed(rows)]
+            return [row[0] for row in reversed(rows)]
 
     async def count_context(self, owner_type, owner_id, user_id=None):
         async with aiosqlite.connect(self.db_path) as db:

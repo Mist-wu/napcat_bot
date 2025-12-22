@@ -74,7 +74,7 @@ async def handle_group_message(websocket, event, text, image_urls, user_id, grou
         n_ctx = await context_memory.count_context('group', group_id)
         if n_ctx > 30:
             await context_memory.summarize_and_shrink('group', group_id, ai_client)
-        context_lines = await context_memory.get_context('group', group_id)
+        context_lines = await context_memory.get_context('group', group_id, user_id=user_id, mode="mix")
         reply = await process_image_message(image_urls, ai_client, user_id)
         await context_memory.add_message('group', group_id, "bot", reply)
     elif text:
@@ -84,7 +84,7 @@ async def handle_group_message(websocket, event, text, image_urls, user_id, grou
         n_ctx = await context_memory.count_context('group', group_id)
         if n_ctx > 30:
             await context_memory.summarize_and_shrink('group', group_id, ai_client)
-        context_lines = await context_memory.get_context('group', group_id)
+        context_lines = await context_memory.get_context('group', group_id, user_id=user_id, mode="mix")
         ai_input = "\n".join(context_lines + [text])
         reply = await ai_client.call(ai_input)
         await context_memory.add_message('group', group_id, "bot", reply)
