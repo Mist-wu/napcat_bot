@@ -82,14 +82,28 @@ class BUPTElecQuerier:
         # temp_data: dict, 用于存储 area_id, partmentId, floorId
         if temp_data is None:
             temp_data = {}
+        # 获取学号密码
+        auth = user_db.get_auth(user_id)
+        if not auth:
+            await send_private_text(websocket, user_id, "请先输入/认证进行身份认证")
+            state_manager.clear_state(user_id)
+            return
+        student_id, password = auth
+        await self.init_session()
+        login_ok, login_msg = await self.login(student_id, password)
+        if not login_ok:
+            await send_private_text(websocket, user_id, f"认证信息失效，请重新/认证。原因：{login_msg}")
+            await self.close_session()
+            state_manager.clear_state(user_id)
+            return
         if step is None:
             # 1. 校区选择
             await send_private_text(websocket, user_id, "请选择校区:\n1. 西土城校区\n2. 沙河校区\n请回复数字(1/2)")
             state_manager.set_state(user_id, 'ELEC_AWAIT_AREA', temp_data)
+            await self.close_session()
             return
         if step == 'area':
             area_id = temp_data.get('area_id')
-            await self.init_session()
             res = await self.fetch_api_data("part", {"areaid": area_id})
             b_list = res.get('d', {}).get('data', [])
             if not b_list:
@@ -101,13 +115,13 @@ class BUPTElecQuerier:
             msg = "请选择公寓楼:\n" + "\n".join([f"{i+1}. {b.get('partmentName')}" for i, b in enumerate(b_list)])
             await send_private_text(websocket, user_id, msg + "\n请回复编号")
             state_manager.set_state(user_id, 'ELEC_AWAIT_PART', temp_data)
+            await self.close_session()
             return
         if step == 'part':
             b_list = temp_data['b_list']
             b_idx = temp_data.get('b_idx')
             selected_partment_id = b_list[b_idx]['partmentId']
             temp_data['partmentId'] = selected_partment_id
-            await self.init_session()
             res = await self.fetch_api_data("floor", {"areaid": temp_data['area_id'], "partmentId": selected_partment_id})
             f_list = res.get('d', {}).get('data', [])
             if not f_list:
@@ -119,13 +133,13 @@ class BUPTElecQuerier:
             msg = "请选择楼层:\n" + "\n".join([f"{i+1}. {f.get('floorName')}" for i, f in enumerate(f_list)])
             await send_private_text(websocket, user_id, msg + "\n请回复编号")
             state_manager.set_state(user_id, 'ELEC_AWAIT_FLOOR', temp_data)
+            await self.close_session()
             return
         if step == 'floor':
             f_list = temp_data['f_list']
             f_idx = temp_data.get('f_idx')
             selected_floor_id = f_list[f_idx]['floorId']
             temp_data['floorId'] = selected_floor_id
-            await self.init_session()
             res = await self.fetch_api_data("drom", {
                 "areaid": temp_data['area_id'],
                 "partmentId": temp_data['partmentId'],
@@ -146,6 +160,7 @@ class BUPTElecQuerier:
             msg = "请选择宿舍:\n" + "\n".join([f"{i+1}. {d.get('dromName')}" for i, d in enumerate(d_list)])
             await send_private_text(websocket, user_id, msg + "\n请回复编号")
             state_manager.set_state(user_id, 'ELEC_AWAIT_DORM', temp_data)
+            await self.close_session()
             return
         if step == 'dorm':
             d_list = temp_data['d_list']
@@ -158,7 +173,6 @@ class BUPTElecQuerier:
                 'dromNumber': selected_dorm.get('dromNum'),
                 'areaid': temp_data['area_id']
             }
-            await self.init_session()
             result = await self.fetch_api_data("search", search_payload)
             await self.close_session()
             if result.get('e') == 0:

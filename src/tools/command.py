@@ -88,16 +88,21 @@ async def handle_command_message(message: str, user_id: str = "", websocket=None
             # 重新走选宿舍流程
             querier = BUPTElecQuerier()
             await querier.query_electricity_dialog(websocket, user_id)
-            return "已重置宿舍信息，请重新选择。"
+            return None
         # 检查认证
         auth = user_db.get_auth(user_id)
         if not auth:
             return "请先输入/认证进行身份认证"
         dorm = user_db.get_dorm(user_id)
         if dorm:
-            # 直接查
+            # 先登录再查
             querier = BUPTElecQuerier()
+            student_id, password = auth
             await querier.init_session()
+            login_ok, login_msg = await querier.login(student_id, password)
+            if not login_ok:
+                await querier.close_session()
+                return f"认证信息失效，请重新/认证。原因：{login_msg}"
             payload = {
                 'partmentId': dorm[1],
                 'floorId': dorm[2],
@@ -121,7 +126,7 @@ async def handle_command_message(message: str, user_id: str = "", websocket=None
         # 没有宿舍信息，走多轮
         querier = BUPTElecQuerier()
         await querier.query_electricity_dialog(websocket, user_id)
-        return "请根据提示完成宿舍选择。"
+        return None
 
     # 其他原有指令...
     if command in ["指令", "help"]:
