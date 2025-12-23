@@ -35,11 +35,10 @@ def si_img(id: str) -> str:
     url = f"https://api.lolimi.cn/API/si/api.php?QQ={id}"
     return f"[CQ:image,url={url}]"
 
-def pixiv_image(keyword: str = None) -> str:
+def pixiv_image() -> str:
     api_url = "https://api.lolicon.app/setu/v2"
-    params = {"num": 1}
-    if keyword:
-        params["tag"] = keyword
+    params = {"num": 1, "r18": True}
+
     resp = requests.get(api_url, params=params, timeout=10)
     resp.raise_for_status()
     data = resp.json()
@@ -63,7 +62,7 @@ def command_list() -> str:
         "/撕 [@]",
         "/查玩家 [tag]",
         "/查战队 [tag]",
-        "/图 [搜索标签]",
+        "/图",
     ]
     return "可用指令列表：\n" + "\n".join(cmds)
 
@@ -117,11 +116,11 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
         return data or "未找到战队信息"
     if command == "图":
         try:
-            img_url = await asyncio.to_thread(
-                pixiv_image, args if args else None
-            )
+            img_url = await asyncio.to_thread(pixiv_image)
             return f"[CQ:image,url={img_url}]"
         except Exception as e:
             return f"获取P站图片失败：{e}"
+    if command == "图图":
+        return f"[CQ:image,url=https://i.pixiv.re/img-original/img/2024/01/08/01/02/08/114981714_p0.png]"
 
     return "未识别的指令"
