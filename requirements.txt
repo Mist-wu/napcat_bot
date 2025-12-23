@@ -6,3 +6,4 @@ aiohttp
 tomlkit
 structlog
 aiosqlite
+beautifulsoup4
