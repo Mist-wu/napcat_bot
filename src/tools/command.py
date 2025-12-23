@@ -1,4 +1,5 @@
 import asyncio
+import requests
 from src.tools.weather import get_weather, format_weather_info
 from src.utils.extract import extract_qq_from_at
 from src.tools.brawl import get_club_info, get_player_info
@@ -34,8 +35,22 @@ def si_img(id: str) -> str:
     url = f"https://api.lolimi.cn/API/si/api.php?QQ={id}"
     return f"[CQ:image,url={url}]"
 
+def pixiv_image(keyword: str = None) -> str:
+    api_url = "https://api.lolicon.app/setu/v2"
+    params = {"num": 1}
+    if keyword:
+        params["tag"] = keyword
+    resp = requests.get(api_url, params=params, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+
+    if not data or "data" not in data or not data["data"]:
+        raise Exception("没有获取到P站图片")
+    item = data["data"][0]
+    image_url = item["urls"]["original"]
+    return image_url
+
 def command_list() -> str:
-    # 指令一栏，如需增减或排序在此处编辑即可
     cmds = [
         "/指令",
         "/天气 [城市名]",
@@ -48,6 +63,7 @@ def command_list() -> str:
         "/撕 [@]",
         "/查玩家 [tag]",
         "/查战队 [tag]",
+        "/图 [搜索标签]",
     ]
     return "可用指令列表：\n" + "\n".join(cmds)
 
@@ -99,5 +115,13 @@ async def handle_command_message(message: str, user_id: str = "") -> str:
             return "请在指令后输入战队tag，例如：/查战队 Q2P"
         data = await asyncio.to_thread(get_club_info, args)
         return data or "未找到战队信息"
+    if command == "图":
+        try:
+            img_url = await asyncio.to_thread(
+                pixiv_image, args if args else None
+            )
+            return f"[CQ:image,url={img_url}]"
+        except Exception as e:
+            return f"获取P站图片失败：{e}"
 
     return "未识别的指令"
