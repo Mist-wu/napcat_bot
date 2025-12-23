@@ -20,8 +20,14 @@ class UserConfigDB:
                 area_id TEXT,
                 dept_id TEXT,
                 floor_id TEXT,
-                room_no TEXT
+                room_no TEXT,
+                dorm_name TEXT
             )''')
+            # 升级已有表结构，添加dorm_name字段（如果不存在）
+            try:
+                conn.execute('ALTER TABLE user_configs ADD COLUMN dorm_name TEXT')
+            except Exception:
+                pass
             conn.commit()
 
     def set_auth(self, user_id: str, student_id: str, password: str):
@@ -39,17 +45,17 @@ class UserConfigDB:
                 return row[0], b64decode(row[1]).decode()
             return None
 
-    def set_dorm(self, user_id: str, area_id: str, dept_id: str, floor_id: str, room_no: str):
+    def set_dorm(self, user_id: str, area_id: str, dept_id: str, floor_id: str, room_no: str, dorm_name: str):
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute('''UPDATE user_configs SET area_id=?, dept_id=?, floor_id=?, room_no=? WHERE user_id=?''',
-                         (area_id, dept_id, floor_id, room_no, user_id))
+            conn.execute('''UPDATE user_configs SET area_id=?, dept_id=?, floor_id=?, room_no=?, dorm_name=? WHERE user_id=?''',
+                         (area_id, dept_id, floor_id, room_no, dorm_name, user_id))
             conn.commit()
 
     def get_dorm(self, user_id: str) -> Optional[tuple]:
         with sqlite3.connect(self.db_path) as conn:
-            cur = conn.execute('SELECT area_id, dept_id, floor_id, room_no FROM user_configs WHERE user_id=?', (user_id,))
+            cur = conn.execute('SELECT area_id, dept_id, floor_id, room_no, dorm_name FROM user_configs WHERE user_id=?', (user_id,))
             row = cur.fetchone()
-            if row and all(row):
+            if row and all(row[:4]):
                 return row
             return None
 

@@ -186,7 +186,7 @@ class BUPTElecQuerier:
                 msg += f"总用电量：{data_obj.get('vTotal')} 度\n更新时间：{data_obj.get('time')}"
                 await send_private_text(websocket, user_id, msg)
                 # 存储宿舍信息
-                user_db.set_dorm(user_id, temp_data['area_id'], temp_data['partmentId'], temp_data['floorId'], selected_dorm.get('dromNum'))
+                user_db.set_dorm(user_id, temp_data['area_id'], temp_data['partmentId'], temp_data['floorId'], selected_dorm.get('dromNum'), selected_dorm.get('dromName'))
                 state_manager.clear_state(user_id)
             else:
                 await send_private_text(websocket, user_id, f"查询失败: {result.get('m')}")
