@@ -177,7 +177,7 @@ class BUPTElecQuerier:
             await self.close_session()
             if result.get('e') == 0:
                 data_obj = result.get('d', {}).get('data', {})
-                msg = f"位置：{data_obj.get('parName')} - {data_obj.get('dromName')}\n剩余金额：{data_obj.get('surplus')} 元\n"
+                msg = f"位置：{data_obj.get('parName')} - {selected_dorm.get('dromName')}\n剩余金额：{data_obj.get('surplus')} 元\n"
                 try:
                     price = float(data_obj.get('price', 0.5))
                     surplus = float(data_obj.get('surplus', 0))
