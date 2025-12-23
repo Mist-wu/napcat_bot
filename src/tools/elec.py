@@ -3,6 +3,10 @@ import re
 import json
 import asyncio
 
+from src.ai.user_db import user_db
+from src.ai.state_manager import state_manager
+from src.utils.output import send_private_text
+
 class BUPTElecQuerier:
     def __init__(self):
         self.base_url = "https://app.bupt.edu.cn/buptdf/wap/default/chong"
@@ -72,102 +76,108 @@ class BUPTElecQuerier:
         except Exception as e:
             return {"e": -1, "m": f"请求异常: {str(e)}", "d": {}}
 
-    async def run_interactive(self):
-        print("=== 北邮电费查询系统 ===")
-        acc = input("请输入学号: ")
-        pwd = input("请输入密码: ")
 
-        await self.init_session()
-        
-        try:
-            success, msg = await self.login(acc, pwd)
-            if not success:
-                print(f"错误: {msg}")
-                return
-
-            # 1. 选择校区
-            print("\n[1] 选择校区:\n1. 西土城校区\n2. 沙河校区")
-            area_id = input("请选择 (1/2): ")
-
-            # 2. 获取公寓楼
+    async def query_electricity_dialog(self, websocket, user_id, step=None, temp_data=None):
+        # step: None/area/part/floor/dorm/search
+        # temp_data: dict, 用于存储 area_id, partmentId, floorId
+        if temp_data is None:
+            temp_data = {}
+        if step is None:
+            # 1. 校区选择
+            await send_private_text(websocket, user_id, "请选择校区:\n1. 西土城校区\n2. 沙河校区\n请回复数字(1/2)")
+            state_manager.set_state(user_id, 'ELEC_AWAIT_AREA', temp_data)
+            return
+        if step == 'area':
+            area_id = temp_data.get('area_id')
+            await self.init_session()
             res = await self.fetch_api_data("part", {"areaid": area_id})
             b_list = res.get('d', {}).get('data', [])
             if not b_list:
-                print(f"获取楼栋失败: {res.get('m', '未知错误')}")
+                await send_private_text(websocket, user_id, f"获取楼栋失败: {res.get('m', '未知错误')}")
+                await self.close_session()
+                state_manager.clear_state(user_id)
                 return
-
-            print("\n[2] 请选择公寓楼:")
-            for i, b in enumerate(b_list):
-                print(f"{i+1}. {b.get('partmentName')}")
-            b_idx = int(input("请输入编号: ")) - 1
+            temp_data['b_list'] = b_list
+            msg = "请选择公寓楼:\n" + "\n".join([f"{i+1}. {b.get('partmentName')}" for i, b in enumerate(b_list)])
+            await send_private_text(websocket, user_id, msg + "\n请回复编号")
+            state_manager.set_state(user_id, 'ELEC_AWAIT_PART', temp_data)
+            return
+        if step == 'part':
+            b_list = temp_data['b_list']
+            b_idx = temp_data.get('b_idx')
             selected_partment_id = b_list[b_idx]['partmentId']
-
-            # 3. 获取楼层
-            res = await self.fetch_api_data("floor", {"areaid": area_id, "partmentId": selected_partment_id})
+            temp_data['partmentId'] = selected_partment_id
+            await self.init_session()
+            res = await self.fetch_api_data("floor", {"areaid": temp_data['area_id'], "partmentId": selected_partment_id})
             f_list = res.get('d', {}).get('data', [])
             if not f_list:
-                print(f"获取楼层失败: {res.get('m', '未知错误')}")
+                await send_private_text(websocket, user_id, f"获取楼层失败: {res.get('m', '未知错误')}")
+                await self.close_session()
+                state_manager.clear_state(user_id)
                 return
-
-            print("\n[3] 请选择楼层:")
-            for i, f in enumerate(f_list):
-                print(f"{i+1}. {f.get('floorName')}")
-            f_idx = int(input("请输入编号: ")) - 1
+            temp_data['f_list'] = f_list
+            msg = "请选择楼层:\n" + "\n".join([f"{i+1}. {f.get('floorName')}" for i, f in enumerate(f_list)])
+            await send_private_text(websocket, user_id, msg + "\n请回复编号")
+            state_manager.set_state(user_id, 'ELEC_AWAIT_FLOOR', temp_data)
+            return
+        if step == 'floor':
+            f_list = temp_data['f_list']
+            f_idx = temp_data.get('f_idx')
             selected_floor_id = f_list[f_idx]['floorId']
-
-            # 4. 获取宿舍
+            temp_data['floorId'] = selected_floor_id
+            await self.init_session()
             res = await self.fetch_api_data("drom", {
-                "areaid": area_id, 
-                "partmentId": selected_partment_id, 
+                "areaid": temp_data['area_id'],
+                "partmentId": temp_data['partmentId'],
                 "floorId": selected_floor_id
             })
-            
-            # 关键防御：确保 res 是字典
             if not isinstance(res, dict):
-                print("错误：宿舍接口返回数据格式异常")
+                await send_private_text(websocket, user_id, "错误：宿舍接口返回数据格式异常")
+                await self.close_session()
+                state_manager.clear_state(user_id)
                 return
-
             d_list = res.get('d', {}).get('data', [])
             if not d_list:
-                print(f"该楼层没有宿舍数据或接口报错: {res.get('m')}")
+                await send_private_text(websocket, user_id, f"该楼层没有宿舍数据或接口报错: {res.get('m')}")
+                await self.close_session()
+                state_manager.clear_state(user_id)
                 return
-
-            print("\n[4] 请选择宿舍:")
-            for i, d in enumerate(d_list):
-                print(f"{i+1}. {d.get('dromName')}")
-            
-            d_idx = int(input("请输入编号: ")) - 1
+            temp_data['d_list'] = d_list
+            msg = "请选择宿舍:\n" + "\n".join([f"{i+1}. {d.get('dromName')}" for i, d in enumerate(d_list)])
+            await send_private_text(websocket, user_id, msg + "\n请回复编号")
+            state_manager.set_state(user_id, 'ELEC_AWAIT_DORM', temp_data)
+            return
+        if step == 'dorm':
+            d_list = temp_data['d_list']
+            d_idx = temp_data.get('d_idx')
             selected_dorm = d_list[d_idx]
-            
-            # 5. 查询结果
-            print("\n正在查询电费详情...")
+            # 查询电费
             search_payload = {
-                'partmentId': selected_partment_id,
-                'floorId': selected_floor_id,
+                'partmentId': temp_data['partmentId'],
+                'floorId': temp_data['floorId'],
                 'dromNumber': selected_dorm.get('dromNum'),
-                'areaid': area_id
+                'areaid': temp_data['area_id']
             }
-            
+            await self.init_session()
             result = await self.fetch_api_data("search", search_payload)
-            
+            await self.close_session()
             if result.get('e') == 0:
                 data_obj = result.get('d', {}).get('data', {})
-                print("\n" + "★"*20)
-                print(f"位置：{data_obj.get('parName')} - {data_obj.get('dromName')}")
-                print(f"剩余金额：{data_obj.get('surplus')} 元")
+                msg = f"位置：{data_obj.get('parName')} - {data_obj.get('dromName')}\n剩余金额：{data_obj.get('surplus')} 元\n"
                 try:
                     price = float(data_obj.get('price', 0.5))
                     surplus = float(data_obj.get('surplus', 0))
-                    print(f"剩余电量：{round(surplus / price, 2)} 度")
+                    msg += f"剩余电量：{round(surplus / price, 2)} 度\n"
                 except: pass
-                print(f"总用电量：{data_obj.get('vTotal')} 度")
-                print(f"更新时间：{data_obj.get('time')}")
-                print("★"*20)
+                msg += f"总用电量：{data_obj.get('vTotal')} 度\n更新时间：{data_obj.get('time')}"
+                await send_private_text(websocket, user_id, msg)
+                # 存储宿舍信息
+                user_db.set_dorm(user_id, temp_data['area_id'], temp_data['partmentId'], temp_data['floorId'], selected_dorm.get('dromNum'))
+                state_manager.clear_state(user_id)
             else:
-                print(f"\n查询失败: {result.get('m')}")
-
-        finally:
-            await self.close_session()
+                await send_private_text(websocket, user_id, f"查询失败: {result.get('m')}")
+                state_manager.clear_state(user_id)
+            return
 
 if __name__ == "__main__":
     querier = BUPTElecQuerier()

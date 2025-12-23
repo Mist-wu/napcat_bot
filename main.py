@@ -5,6 +5,9 @@ import config.config as config
 from src.utils.extract import extract_text_from_message, extract_image_urls
 from src.utils.output import send_private_text, send_group_text
 from src.tools.command import handle_command_message
+from src.ai.state_manager import state_manager
+from src.ai.user_db import user_db
+from src.tools.check_student import check_bupt_student
 from src.ai.ai_deepseek import DeepSeekClient
 from src.ai.img_recog import process_image_message
 from src.ai.context_memory import ContextMemory
@@ -41,6 +44,70 @@ async def handle_private_message(websocket, event, text, image_urls, user_id):
         return
     if not config.is_user_allowed(user_id):
         return
+    # 状态机多轮认证/电费流程
+    state, temp_data = state_manager.get_state(user_id)
+    if state == 'AUTH_AWAIT_STUID':
+        temp_data['student_id'] = text.strip()
+        state_manager.set_state(user_id, 'AUTH_AWAIT_PWD', temp_data)
+        await send_private_text(websocket, user_id, "请输入密码")
+        return
+    if state == 'AUTH_AWAIT_PWD':
+        temp_data['password'] = text.strip()
+        # 校验
+        ok, msg = await asyncio.to_thread(check_bupt_student, temp_data['student_id'], temp_data['password'])
+        if ok:
+            user_db.set_auth(user_id, temp_data['student_id'], temp_data['password'])
+            await send_private_text(websocket, user_id, "认证成功")
+        else:
+            await send_private_text(websocket, user_id, f"认证失败：{msg}")
+        state_manager.clear_state(user_id)
+        return
+    if state.startswith('ELEC_AWAIT_'):
+        from src.tools.elec import BUPTElecQuerier
+        querier = BUPTElecQuerier()
+        # 解析用户输入
+        if state == 'ELEC_AWAIT_AREA':
+            if text.strip() not in ['1', '2']:
+                await send_private_text(websocket, user_id, "请输入1或2")
+                return
+            temp_data['area_id'] = text.strip()
+            await querier.query_electricity_dialog(websocket, user_id, step='area', temp_data=temp_data)
+            return
+        if state == 'ELEC_AWAIT_PART':
+            try:
+                idx = int(text.strip()) - 1
+                if idx < 0 or idx >= len(temp_data['b_list']):
+                    raise Exception()
+            except:
+                await send_private_text(websocket, user_id, "编号无效，请重新输入")
+                return
+            temp_data['b_idx'] = idx
+            await querier.query_electricity_dialog(websocket, user_id, step='part', temp_data=temp_data)
+            return
+        if state == 'ELEC_AWAIT_FLOOR':
+            try:
+                idx = int(text.strip()) - 1
+                if idx < 0 or idx >= len(temp_data['f_list']):
+                    raise Exception()
+            except:
+                await send_private_text(websocket, user_id, "编号无效，请重新输入")
+                return
+            temp_data['f_idx'] = idx
+            await querier.query_electricity_dialog(websocket, user_id, step='floor', temp_data=temp_data)
+            return
+        if state == 'ELEC_AWAIT_DORM':
+            try:
+                idx = int(text.strip()) - 1
+                if idx < 0 or idx >= len(temp_data['d_list']):
+                    raise Exception()
+            except:
+                await send_private_text(websocket, user_id, "编号无效，请重新输入")
+                return
+            temp_data['d_idx'] = idx
+            await querier.query_electricity_dialog(websocket, user_id, step='dorm', temp_data=temp_data)
+            return
+
+    # 原有AI/指令逻辑
     await context_memory.add_message('private', user_id, user_id, text)
     n_ctx = await context_memory.count_context('private', user_id)
     if n_ctx > 30:
@@ -50,7 +117,7 @@ async def handle_private_message(websocket, event, text, image_urls, user_id):
         reply = await process_image_message(image_urls, ai_client, user_id)
         await context_memory.add_message('private', user_id, "bot", reply)
     elif text.startswith("/"):
-        reply = await handle_command_message(text, user_id)
+        reply = await handle_command_message(text, user_id, websocket)
     elif text:
         ai_input = "\n".join(context_lines + [text])
         reply = await ai_client.call(ai_input)

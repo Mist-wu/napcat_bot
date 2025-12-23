@@ -3,6 +3,10 @@ import requests
 from src.tools.weather import get_weather, format_weather_info
 from src.utils.extract import extract_qq_from_at
 from src.tools.brawl import get_club_info, get_player_info
+from src.ai.state_manager import state_manager
+from src.ai.user_db import user_db
+from src.tools.check_student import check_bupt_student
+from src.tools.elec import BUPTElecQuerier
 
 def is_command_message(message: str) -> bool:
     return message.startswith("/")
@@ -67,11 +71,59 @@ def command_list() -> str:
     ]
     return "可用指令列表：\n" + "\n".join(cmds)
 
-async def handle_command_message(message: str, user_id: str = "") -> str:
+async def handle_command_message(message: str, user_id: str = "", websocket=None) -> str:
     parts = message.strip().split(maxsplit=1)
     command = parts[0][1:].lower()
     args = parts[1].strip() if len(parts) > 1 else ""
 
+    # 认证指令
+    if command == "认证":
+        state_manager.set_state(user_id, 'AUTH_AWAIT_STUID', {})
+        return "请输入学号"
+
+    # 查询电费
+    if command == "查询电费":
+        if args.strip() == "换宿舍":
+            user_db.clear_dorm(user_id)
+            # 重新走选宿舍流程
+            querier = BUPTElecQuerier()
+            await querier.query_electricity_dialog(websocket, user_id)
+            return "已重置宿舍信息，请重新选择。"
+        # 检查认证
+        auth = user_db.get_auth(user_id)
+        if not auth:
+            return "请先输入/认证进行身份认证"
+        dorm = user_db.get_dorm(user_id)
+        if dorm:
+            # 直接查
+            querier = BUPTElecQuerier()
+            await querier.init_session()
+            payload = {
+                'partmentId': dorm[1],
+                'floorId': dorm[2],
+                'dromNumber': dorm[3],
+                'areaid': dorm[0]
+            }
+            result = await querier.fetch_api_data("search", payload)
+            await querier.close_session()
+            if result.get('e') == 0:
+                data_obj = result.get('d', {}).get('data', {})
+                msg = f"位置：{data_obj.get('parName')} - {data_obj.get('dromName')}\n剩余金额：{data_obj.get('surplus')} 元\n"
+                try:
+                    price = float(data_obj.get('price', 0.5))
+                    surplus = float(data_obj.get('surplus', 0))
+                    msg += f"剩余电量：{round(surplus / price, 2)} 度\n"
+                except: pass
+                msg += f"总用电量：{data_obj.get('vTotal')} 度\n更新时间：{data_obj.get('time')}"
+                return msg
+            else:
+                return f"查询失败: {result.get('m')}"
+        # 没有宿舍信息，走多轮
+        querier = BUPTElecQuerier()
+        await querier.query_electricity_dialog(websocket, user_id)
+        return "请根据提示完成宿舍选择。"
+
+    # 其他原有指令...
     if command in ["指令", "help"]:
         return command_list()
     if command in ["天气", "weather"]:
