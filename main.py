@@ -5,8 +5,8 @@ import config.config as config
 from src.utils.extract import extract_text_from_message, extract_image_urls
 from src.utils.output import send_private_text, send_group_text
 from src.tools.command import handle_command_message
-from src.ai.state_manager import state_manager
-from src.ai.user_db import user_db
+from src.utils.state_manager import state_manager
+from src.utils.user_db import user_db
 from src.tools.check_student import check_bupt_student
 from src.ai.ai_deepseek import DeepSeekClient
 from src.ai.img_recog import process_image_message

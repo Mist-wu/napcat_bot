@@ -3,8 +3,8 @@ import re
 import json
 import asyncio
 
-from src.ai.user_db import user_db
-from src.ai.state_manager import state_manager
+from src.utils.user_db import user_db
+from src.utils.state_manager import state_manager
 from src.utils.output import send_private_text
 
 class BUPTElecQuerier:

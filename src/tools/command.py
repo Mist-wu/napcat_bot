@@ -3,8 +3,8 @@ import requests
 from src.tools.weather import get_weather, format_weather_info
 from src.utils.extract import extract_qq_from_at
 from src.tools.brawl import get_club_info, get_player_info
-from src.ai.state_manager import state_manager
-from src.ai.user_db import user_db
+from src.utils.state_manager import state_manager
+from src.utils.user_db import user_db
 from src.tools.check_student import check_bupt_student
 from src.tools.elec import BUPTElecQuerier
 
@@ -113,7 +113,7 @@ async def handle_command_message(message: str, user_id: str = "", websocket=None
             await querier.close_session()
             if result.get('e') == 0:
                 data_obj = result.get('d', {}).get('data', {})
-                msg = f"位置：{data_obj.get('parName')} - {data_obj.get('dromName')}\n剩余金额：{data_obj.get('surplus')} 元\n"
+                msg = f"位置：{data_obj.get('parName')} - {data_obj.get('dromNumber')}\n剩余金额：{data_obj.get('surplus')} 元\n"
                 try:
                     price = float(data_obj.get('price', 0.5))
                     surplus = float(data_obj.get('surplus', 0))
