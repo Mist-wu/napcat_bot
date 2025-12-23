@@ -37,7 +37,7 @@ def si_img(id: str) -> str:
 
 def pixiv_image() -> str:
     api_url = "https://api.lolicon.app/setu/v2"
-    params = {"num": 1, "r18": True}
+    params = {"num": 1}
 
     resp = requests.get(api_url, params=params, timeout=10)
     resp.raise_for_status()
