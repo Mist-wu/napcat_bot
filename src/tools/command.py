@@ -59,17 +59,32 @@ def command_list() -> str:
         "/天气 [城市名]",
         "/龙",
         "/猫",
-        "/二次元",
         "/咬 [@]",
         "/玩 [@]",
         "/丢 [@]",
         "/撕 [@]",
         "/查玩家 [tag]",
         "/查战队 [tag]",
-        "/图",
-        "/图图  👈千万别使用",
+        "/快递 [快递单号]"
     ]
     return "可用指令列表：\n" + "\n".join(cmds)
+
+def format_kuaidi_info(resp: dict) -> str:
+    if resp.get("code") != "SUCCESS":
+        return f"查询失败：{resp.get('message', '未知错误')}"
+    d = resp["data"]
+    lines = [
+        f"单号：{d.get('tracking_number')}",
+        f"快递公司：{d.get('carrier_name', d.get('carrier_code', '未知'))}",
+        f"轨迹进度（最新在前）："
+    ]
+    tracks = d.get("tracks", [])
+    if not tracks:
+        lines.append("暂无物流轨迹")
+    else:
+        for tr in tracks:
+            lines.append(f"{tr.get('time','')} {tr.get('status','')}")
+    return "\n".join(lines)
 
 async def handle_command_message(message: str, user_id: str = "", websocket=None) -> str:
     parts = message.strip().split(maxsplit=1)
@@ -85,17 +100,14 @@ async def handle_command_message(message: str, user_id: str = "", websocket=None
     if command == "查询电费":
         if args.strip() == "换宿舍":
             user_db.clear_dorm(user_id)
-            # 重新走选宿舍流程
             querier = BUPTElecQuerier()
             await querier.query_electricity_dialog(websocket, user_id)
             return None
-        # 检查认证
         auth = user_db.get_auth(user_id)
         if not auth:
             return "请先输入/认证进行身份认证"
         dorm = user_db.get_dorm(user_id)
         if dorm:
-            # 先登录再查
             querier = BUPTElecQuerier()
             student_id, password = auth
             await querier.init_session()
@@ -123,12 +135,32 @@ async def handle_command_message(message: str, user_id: str = "", websocket=None
                 return msg
             else:
                 return f"查询失败: {result.get('m')}"
-        # 没有宿舍信息，走多轮
         querier = BUPTElecQuerier()
         await querier.query_electricity_dialog(websocket, user_id)
         return None
 
-    # 其他原有指令...
+    # 新增：快递查询
+    if command == "快递":
+        if not args:
+            return "请在指令后输入快递单号，例如：/快递 1234567890123"
+        try:
+            url = "https://uapis.cn/api/v1/misc/tracking/query"
+            params = {"tracking_number": args}
+            resp = requests.get(url, params=params, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                return format_kuaidi_info(data)
+            # API文档: 404没有物流则也有body
+            if resp.status_code == 404:
+                try:
+                    body = resp.json()
+                    return f"未找到物流信息：{body.get('message', '无轨迹')}"
+                except Exception:
+                    return "未找到物流信息"
+            return f"查询失败，状态码：{resp.status_code}"
+        except Exception as e:
+            return f"快递查询出错：{e}"
+
     if command in ["指令", "help"]:
         return command_list()
     if command in ["天气", "weather"]:
