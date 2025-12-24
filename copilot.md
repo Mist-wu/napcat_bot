@@ -1,145 +1,25 @@
-# 任务：完善 Napcat + WebSocket 消息处理系统（Python，面向生产）
+napcat_bot/                        # 项目根目录
+├── src/                           # 核心源代码
+│   ├── ai/                        # AI相关代码（大模型、图片识别、上下文管理等）
+│   │   ├── ai_deepseek.py         # DeepSeek大模型API封装
+│   │   ├── context_memory.py      # 上下文历史数据库管理（核心：用SQLite）
+│   │   ├── img_recog.py           # 图片识别相关
+│   │   └── llm_client.py          # LLM（大模型）客户端基类
+│   ├── tools/                     # 工具与业务模块
+│   │   ├── command.py             # 指令处理
+│   │   ├── weather.py             # 天气查询
+│   │   ├── check_student.py       # 学生身份认证
+│   │   └── brawl.py               # Brawl Stars查询等
+│   ├── utils/                     # 工具代码
+│   │   ├── extract.py             # 消息内容提取
+│   │   ├── output.py              # 消息发送接口
+│   │   ├── state_manager.py       # 状态机（多轮对话等）
+│   │   └── user_db.py             # 用户状态/数据管理
+├── config/                        # 配置相关
+│   └── config.py                  # 各类配置（如API Token、数据库路径、白名单等）
+├── data/                          # 持久化数据
+│   └── context_memory.db          # SQLite数据库上下文历史（自动生成）
+├── requirements.txt               # Python依赖包列表
+├── README.md                      # 项目说明文档
+└── main.py                        # 启动入口，消息主循环、AI与指令集成
 
-你是资深 Python 架构师与实现工程师。请基于下述目标与约束，设计并实现一个简洁、可维护、可扩展的消息处理系统。现有说明如下：
-- main.py 为程序入口：启动后检查 napcat 是否已启动，若未启动则启动；初始化 napcat 与 WebSocket；连接 WebSocket。
-- 消息由 handle.py 处理：若以 “/” 开头则为指令交由 handle_command_message；否则交由 AI 系统处理。
-- 希望对启动流程、消息架构、AI 集成进行优化（见下文详细要求）。
-
-## 总体目标
-- 提供健壮的启动流程与健康检查机制，避免卡死与隐性失败。
-- 建立清晰的消息分发架构，支持指令注册、扩展中间件、处理普通消息与事件。
-- 集成 AI（异步/队列可选），具备上下文管理与隔离。
-- 代码整洁简明、模块职责清晰、注释仅保留必要信息。
-
-## 关键非功能约束
-- Python 3.10+，尽量使用标准库与轻量依赖。
-- 异步优先（`asyncio`），避免阻塞主流程。
-- 配置集中化（env/配置文件），支持默认值、校验与覆盖。
-- 日志统一（结构化日志），错误可观测（重试、超时、降级）。
-- 代码可测试（模块化、依赖注入、可替换实现）。
-- 保持文件命名与功能清晰；必要时可新增或删改文件。
-
-## 架构设计要求
-1. 启动流程与健康检查
-   - 在 `main.py` 中仅做“启动”，具体初始化抽出到其他模块：
-     - NapcatService：启动、状态检查、重试与超时。
-     - WebSocketClient：建立连接、心跳/重连策略、关闭与清理。
-   - 统一生命周期管理：启动 -> 运行 -> 优雅关闭（信号处理、资源释放）。
-
-2. 配置管理
-   - `config.py`：封装从环境变量/`.env`/配置文件的加载，包含：
-     - Napcat 启动命令/端口/状态检查端点。
-     - WebSocket 服务器地址、重试策略、超时。
-     - AI 服务开关、类型（本地/远程）、并发限制、超时。
-     - 日志级别、格式、持久化选项。
-   - 支持类型校验与默认值；提供 `get_config()`。
-
-3. 消息处理架构
-   - 在 `handle/dispatcher.py` 实现 MessageDispatcher：
-     - 输入统一的 Message 对象（含来源、类型、内容、元数据）。
-     - 基于类型分发到：CommandHandler、PlainMessageHandler、EventHandler。
-   - 指令注册机制（在 `handle/commands/`）：
-     - 使用装饰器或字典映射注册，如 `@register_command("/help")`。
-     - 自动发现与加载（按模块扫描或显式列表），避免巨型 if-elif。
-   - 中间件/管道（在 `handle/middleware/`）：
-     - 前置中间件：日志、权限校验、限流、反垃圾。
-     - 后置中间件：审计、埋点、错误包装。
-     - 管道支持异步执行与短路。
-
-4. AI 系统集成
-   - 在 `ai/` 目录实现：
-     - AIClient 接口：`async generate_response(message, context, options)`。
-     - 可插拔实现（本地/HTTP API）；超时、重试与并发限制。
-     - 会话上下文管理（按用户/群组隔离）：`ContextStore`（内存/可持久化），提供 `get_context(key) / update_context(key, delta)`。
-   - 将非指令消息交由 AI 异步处理；主流程不可阻塞。
-   - 可选：引入任务队列（如 `asyncio.Queue`）与 Worker，避免背压问题。
-
-5. 日志与可观测性
-   - 统一 `logging` 配置，结构化输出（含 trace_id/msg_id/source/type/duration）。
-   - 对关键路径记录耗时与错误；重试/降级必须有日志与指标。
-   - 对外部调用（Napcat/WS/AI）加超时包装；异常必须被捕获并分类处理。
-
-
-你可以根据需要增删文件，但请保持上述职责划分。
-
-## 行为细节与示例约束
-- 指令识别：以 `/` 开头为指令；指令解析需支持参数（如 `/set name=xxx`）。
-- 非指令消息：交由 AI；若 AI 异常或超时，返回降级提示。
-- 中间件执行顺序：logging -> auth -> rate_limit -> … -> handler。
-- WebSocket 客户端需支持：
-  - 自动重连（退避策略）、心跳、连接断开通知。
-  - 接收消息后转为统一 Message 对象，送入 Dispatcher。
-- Napcat 健康检查：
-  - 启动后轮询健康端点（或端口探测）；设定最大等待时长与退避。
-  - 启动失败需明确退出或告警。
-- 优雅关闭：拦截 SIGINT/SIGTERM，按序关闭（WS -> AI Workers -> Napcat）。
-
-## 代码质量与风格
-- 类型标注完善；必要注释；避免过度文档化。
-- 函数短小、明确入参与返回；边界错误显式处理。
-- 不在核心路径使用全局可变状态；通过依赖注入传递实例。
-- 配置与常量不可硬编码在业务逻辑中。
-
-## 交付内容
-- 完整代码实现，包含上述模块与必要的样例指令（如 `/help`, `/ping`）。
-- 简短 README（说明如何配置与运行、启动流程、扩展指令与中间件的方法）。
-- 示例配置（环境变量或 `.env.example`）。
-- 若使用第三方依赖，请在 README 标明用途与替代方案。
-
-## 运行与测试最低要求
-- 支持：`python -m main` 或 `python main.py` 启动。
-- 在无 Napcat/AI 实际服务时，需提供模拟/降级实现以便本地跑通（可用假客户端与内存上下文）。
-- 提供最小集成测试或演示脚本，展示指令与普通消息的处理。
-
-## 评审重点
-- 启动健壮性（健康检查/重试/超时/优雅关闭）。
-- 架构清晰度（分层、依赖注入、可扩展性）。
-- 异步正确性（不阻塞、背压处理、错误隔离）。
-- 可维护性（模块职责、测试可写性、日志与配置管理）。
-
-请在实现中严格遵循以上要求，代码务必简洁明确，注释仅保留必要信息；可在合理范围内增删文件以达成目标。
-
-
-   1. 核心聊天逻辑 (ai/chat/)
-
-   这是机器人的“大脑”和“心脏”，处理消息流转和回复生成。
-
-     - message_receive/: 消息接收与预处理。
-       - bot.py: 包含 chat_bot 对象，定义了核心的 message_process 函数。
-       - chat_stream.py: 聊天流管理器。
-     - heart_flow/: 核心心流处理系统（HeartFlow），控制消息的处理流程。
-       - heartflow.py: 心流主逻辑。
-       - heartflow_message_processor.py: 消息处理器。
-     - brain_chat/: 高级推理与规划。
-       - brain_chat.py, brain_planner.py: 负责复杂的对话规划。
-     - replyer/: 回复生成器。
-       - replyer_manager.py: 管理回复生成。
-       - group_generator.py, private_generator.py: 分别处理群聊和私聊的回复生成。
-     - planner_actions/: 规划器可执行的动作（如调用工具）。
-     - frequency_control/: 频率控制，防止机器人刷屏。
-     - emoji_system/: 表情包管理系统。
-
-   2. LLM 模型接口 (ai/llm_models/)
-
-   负责与大语言模型进行交互。
-
-     - model_client/: 不同模型的客户端实现。。
-
-   3. 记忆与知识库 (ai/memory_system/ & ai/chat/knowledge/)
-
-   负责机器人的长期记忆和知识检索。
-
-     - ai/memory_system/: 记忆检索系统。
-       - memory_retrieval.py: 记忆检索主逻辑。
-       - retrieval_tools/: 具体的检索工具（如查询聊天记录、人物信息等）。
-     - ai/chat/knowledge/: 知识图谱与嵌入存储。
-       - kg_manager.py: 知识图谱管理。
-       - embedding_store.py: 向量存储。
-       - qa_manager.py: 问答管理。
-
-   4. 其他重要模块
-
-     - ai/mood/: 情绪管理系统 (mood_manager.py)，让机器人拥有情绪状态。
-     - ai/person_info/: 用户信息管理，记录交互对象的信息。
-     - ai/express/: 表情/表达学习与选择模块。
-     - config/: 机器人配置
