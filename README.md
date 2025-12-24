@@ -36,7 +36,7 @@
 
    ```ini
    WEATHER_API_KEY=你的天气接口APIKEY
-   DEEPSEEK_API_KEY=你的深析AI接口APIKEY
+   DEEPSEEK_API_KEY=你的ds AI接口APIKEY
    NAPCAT_TOKEN=你的NapCatToken
    ```
 
