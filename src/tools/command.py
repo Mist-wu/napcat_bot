@@ -57,6 +57,10 @@ def command_list() -> str:
     cmds = [
         "/指令",
         "/天气 [城市名]",
+        "/启用天气播报 [地点]",
+        "/禁用天气播报",
+        "/启用电费预警",
+        "/禁用电费预警",
         "/龙",
         "/猫",
         "/咬 [@]",
@@ -90,6 +94,24 @@ async def handle_command_message(message: str, user_id: str = "", websocket=None
     parts = message.strip().split(maxsplit=1)
     command = parts[0][1:].lower()
     args = parts[1].strip() if len(parts) > 1 else ""
+
+    # 天气播报开关
+    if command == "启用天气播报":
+        if not args:
+            return "请在指令后输入地点，例如：/启用天气播报 北京"
+        user_db.set_weather_report(user_id, True, args)
+        return f"已为你启用天气播报，地点：{args}"
+    if command == "禁用天气播报":
+        user_db.set_weather_report(user_id, False)
+        return "已为你禁用天气播报"
+
+    # 电费预警开关
+    if command == "启用电费预警":
+        user_db.set_elec_alert(user_id, True)
+        return "已为你启用电费预警"
+    if command == "禁用电费预警":
+        user_db.set_elec_alert(user_id, False)
+        return "已为你禁用电费预警"
 
     # 认证指令
     if command == "认证":

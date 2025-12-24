@@ -193,10 +193,13 @@ async def listen_and_respond():
     uri = f"ws://{NAPCAT_HOST}:{NAPCAT_PORT}/ws"
     headers = {"Authorization": f"Bearer {NAPCAT_TOKEN}"}
     print(f"正在连接到 NapCatQQ 服务器: {uri}")
+    from src.utils.schedule_tasks import schedule_loop
     try:
         async with __import__("websockets").connect(uri, additional_headers=headers) as websocket:
             print("连接成功，开始监听消息")
             await send_private_text(websocket, target_qq, "Bot成功启动")
+            # 启动定时任务调度
+            asyncio.create_task(schedule_loop(websocket))
             try:
                 while True:
                     raw = await websocket.recv()

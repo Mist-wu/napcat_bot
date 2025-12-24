@@ -21,14 +21,57 @@ class UserConfigDB:
                 dept_id TEXT,
                 floor_id TEXT,
                 room_no TEXT,
-                dorm_name TEXT
+                dorm_name TEXT,
+                weather_report_enabled INTEGER DEFAULT 0,
+                weather_report_location TEXT,
+                elec_alert_enabled INTEGER DEFAULT 0
             )''')
-            # 升级已有表结构，添加dorm_name字段（如果不存在）
+            # 升级已有表结构，添加新字段（如果不存在）
             try:
                 conn.execute('ALTER TABLE user_configs ADD COLUMN dorm_name TEXT')
             except Exception:
                 pass
+            try:
+                conn.execute('ALTER TABLE user_configs ADD COLUMN weather_report_enabled INTEGER DEFAULT 0')
+            except Exception:
+                pass
+            try:
+                conn.execute('ALTER TABLE user_configs ADD COLUMN weather_report_location TEXT')
+            except Exception:
+                pass
+            try:
+                conn.execute('ALTER TABLE user_configs ADD COLUMN elec_alert_enabled INTEGER DEFAULT 0')
+            except Exception:
+                pass
             conn.commit()
+    def set_weather_report(self, user_id: str, enabled: bool, location: str = None):
+        with sqlite3.connect(self.db_path) as conn:
+            if enabled:
+                conn.execute('''UPDATE user_configs SET weather_report_enabled=1, weather_report_location=? WHERE user_id=?''', (location, user_id))
+            else:
+                conn.execute('''UPDATE user_configs SET weather_report_enabled=0 WHERE user_id=?''', (user_id,))
+            conn.commit()
+
+    def get_weather_report(self, user_id: str):
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.execute('SELECT weather_report_enabled, weather_report_location FROM user_configs WHERE user_id=?', (user_id,))
+            row = cur.fetchone()
+            if row:
+                return bool(row[0]), row[1]
+            return False, None
+
+    def set_elec_alert(self, user_id: str, enabled: bool):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute('''UPDATE user_configs SET elec_alert_enabled=? WHERE user_id=?''', (1 if enabled else 0, user_id))
+            conn.commit()
+
+    def get_elec_alert(self, user_id: str) -> bool:
+        with sqlite3.connect(self.db_path) as conn:
+            cur = conn.execute('SELECT elec_alert_enabled FROM user_configs WHERE user_id=?', (user_id,))
+            row = cur.fetchone()
+            if row:
+                return bool(row[0])
+            return False
 
     def set_auth(self, user_id: str, student_id: str, password: str):
         enc_pwd = b64encode(password.encode()).decode()
