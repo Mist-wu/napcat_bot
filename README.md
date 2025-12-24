@@ -12,7 +12,16 @@
 
    按提示完成 NapCat 主控端与 QQ 账号的连接配置。
 
-2. **Python 依赖安装**
+2. **克隆 napcat_bot 仓库**
+    
+    推荐在 NapCat 安装目录下执行以下命令，克隆本项目源码：
+
+    ```bash
+    git clone https://github.com/Mist-wu/napcat_bot.git
+    cd napcat_bot
+    ```
+
+3. **Python 依赖安装**
 
    确保主机已安装 python3（建议3.8及以上），并且已安装 pip。
    进入本项目目录，执行：
@@ -21,7 +30,7 @@
    pip install -r requirements.txt
    ```
 
-3. **环境变量配置**
+4. **环境变量配置**
 
    项目部分功能需配置 API key，编辑 `.env` 文件（可复制 `.env.example`，填入内容）：
 
