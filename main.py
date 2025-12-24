@@ -131,6 +131,10 @@ async def handle_group_message(websocket, event, text, image_urls, user_id, grou
     if config.is_user_blacklisted(user_id):
         return
     if text.startswith("/"):
+        # 检查是否为/认证 指令
+        if text.strip().split(maxsplit=1)[0] == "/认证":
+            await send_group_text(websocket, group_id, "该指令为私聊指令")
+            return
         if not config.is_group_cmd_allowed(group_id):
             return
         reply = await handle_command_message(text, user_id)
