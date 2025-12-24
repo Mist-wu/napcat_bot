@@ -127,7 +127,7 @@ async def handle_command_message(message: str, user_id: str = "", websocket=None
             return None
         auth = user_db.get_auth(user_id)
         if not auth:
-            return "请先输入/认证进行身份认证"
+            return "请先输入“/认证”进行身份认证"
         dorm = user_db.get_dorm(user_id)
         if dorm:
             querier = BUPTElecQuerier()
