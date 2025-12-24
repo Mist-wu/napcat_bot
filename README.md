@@ -124,7 +124,7 @@ NapCat API/接口文档：[NapCat官方Apifox接口文档](https://napcat.apifox
 
 ## 七、项目维护与反馈
 
-如遇到bug或建议，请通过GitHub Issues提交，或联系项目维护者。
+如遇bug或建议，请通过GitHub Issues提交，或联系项目维护者。
 
 ```
 本项目仅供校园学习&娱乐使用，请勿用于商业用途或泄漏个人隐私信息。
