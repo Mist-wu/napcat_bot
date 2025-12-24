@@ -234,5 +234,6 @@ async def handle_command_message(message: str, user_id: str = "", websocket=None
             return f"获取P站图片失败：{e}"
     if command == "图图":
         return f"[CQ:image,url=https://i.pixiv.re/img-original/img/2024/01/08/01/02/08/114981714_p0.png]"
+    #非本人开发，请注意甄别
 
     return "未识别的指令"
