@@ -11,6 +11,7 @@
    ```
 
    按提示完成 NapCat 主控端与 QQ 账号的连接配置。
+   终端会给出napcat 访问地址与token，记录访问地址与token，在本地浏览器访问，使用token登录，网络配置→新建→websocket服务器，记录websocket token
 
 2. **克隆 napcat_bot 仓库**
     
@@ -27,20 +28,29 @@
    进入本项目目录，执行：
 
    ```bash
-   pip install -r requirements.txt
+    # 安装虚拟环境工具
+    sudo apt install python3-venv -y
+
+    # 创建虚拟环境
+    python3 -m venv venv
+
+    # 激活虚拟环境
+    source venv/bin/activate
+
+    # 在虚拟环境中安装依赖
+    pip install -r requirements.txt
    ```
 
 4. **环境变量配置**
 
-   项目部分功能需配置 API key，编辑 `.env` 文件（可复制 `.env.example`，填入内容）：
+   项目部分功能需配置 API key，编辑 `.env` 文件：
 
    ```ini
    WEATHER_API_KEY=你的天气接口APIKEY
-   DEEPSEEK_API_KEY=你的ds AI接口APIKEY
-   NAPCAT_TOKEN=你的NapCatToken
+   DEEPSEEK_API_KEY=你的deepseek APIKEY
+   NAPCAT_TOKEN=你的websocketToken
    ```
 
-   NapCat Token 获取方式详见 NapCat 官方文档（如有疑问请访问 NapCat 社区）。
 
 ---
 
